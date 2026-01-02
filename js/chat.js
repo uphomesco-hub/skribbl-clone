@@ -66,10 +66,10 @@ class ChatManager {
     }
 
     // Add a correct guess message
-    addCorrectGuessMessage(playerName) {
+    addCorrectGuessMessage(playerName, score = null) {
         const msgEl = document.createElement('div');
         msgEl.className = 'chat-message correct';
-        msgEl.textContent = `${playerName} guessed the word!`;
+        msgEl.textContent = score ? `${playerName} guessed the word! (+${score})` : `${playerName} guessed the word!`;
         this.container.appendChild(msgEl);
         this.scrollToBottom();
     }

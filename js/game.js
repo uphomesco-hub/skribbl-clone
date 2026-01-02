@@ -108,9 +108,23 @@ class GameManager {
     }
 
     // Start the game
-    startGame() {
+    startGame({ deferTurnStart = false } = {}) {
         if (this.players.size < 2) {
             return { error: 'Need at least 2 players to start' };
+        }
+
+        // Clear ALL timers from any previous run
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+        if (this.wordSelectTimer) {
+            clearInterval(this.wordSelectTimer);
+            this.wordSelectTimer = null;
+        }
+        if (this.nextTurnTimeout) {
+            clearTimeout(this.nextTurnTimeout);
+            this.nextTurnTimeout = null;
         }
 
         // Set up drawing order
@@ -125,6 +139,20 @@ class GameManager {
             player.score = 0;
             player.hasGuessed = false;
         });
+
+        if (deferTurnStart) {
+            this.state = 'wordSelect';
+            this.roundScores.clear();
+            this.currentWord = '';
+            this.revealedLetters = [];
+            this.timeRemaining = 0;
+
+            if (this.onStateChange) {
+                this.onStateChange(this.state);
+            }
+
+            return { success: true };
+        }
 
         this.startTurn();
         return { success: true };

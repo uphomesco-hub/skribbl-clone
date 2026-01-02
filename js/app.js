@@ -17,6 +17,7 @@ class SkribblApp {
 
         this.playerName = '';
         this.isHost = false;
+        this.publicWordDisplay = '';
 
         this.init();
     }
@@ -154,6 +155,31 @@ class SkribblApp {
     setupGameCallbacks() {
         this.game.onStateChange = (state) => {
             this.handleGameStateChange(state);
+
+            // Host is authoritative for state transitions; notify peers about drawing phase start.
+            if (this.isHost && state === 'drawing') {
+                const drawerId = this.game.getCurrentDrawerId();
+                const wordDisplay = this.game.getWordDisplay(false);
+
+                // Ensure the drawer knows the actual word (auto-select can happen).
+                if (drawerId && drawerId !== this.peer.roomCode) {
+                    this.peer.sendTo(drawerId, {
+                        type: 'yourWord',
+                        payload: { word: this.game.currentWord }
+                    });
+                }
+
+                this.peer.broadcast({
+                    type: 'drawingStart',
+                    payload: {
+                        drawerId,
+                        currentRound: this.game.currentRound,
+                        currentDrawerIndex: this.game.currentDrawerIndex,
+                        drawingOrder: this.game.drawingOrder,
+                        wordDisplay
+                    }
+                });
+            }
         };
 
         this.game.onTimerUpdate = (time, maxTime) => {
@@ -173,28 +199,32 @@ class SkribblApp {
         };
 
         this.game.onWordSelect = (words, drawerId) => {
-            const isDrawer = (this.isHost && drawerId === this.peer.roomCode) ||
-                (!this.isHost && drawerId === this.peer.playerId);
+            if (!this.isHost) return;
 
-            if (isDrawer) {
+            const turnPayload = {
+                drawerId,
+                currentRound: this.game.currentRound,
+                currentDrawerIndex: this.game.currentDrawerIndex,
+                drawingOrder: this.game.drawingOrder
+            };
+
+            // Everyone enters word-select; only the active drawer receives the word options.
+            this.peer.broadcast({
+                type: 'wordSelectPhase',
+                payload: { ...turnPayload, words: null }
+            });
+
+            if (drawerId === this.peer.roomCode) {
                 this.ui.showWordSelection(words, (word) => {
                     this.game.selectWord(word);
-                    if (this.isHost) {
-                        this.peer.broadcast({
-                            type: 'wordSelected',
-                            payload: { drawerId }
-                        });
-                    }
                 });
+                return;
             }
 
-            // Broadcast word selection phase
-            if (this.isHost) {
-                this.peer.broadcast({
-                    type: 'wordSelectPhase',
-                    payload: { words: isDrawer ? words : null, drawerId }
-                });
-            }
+            this.peer.sendTo(drawerId, {
+                type: 'wordSelectPhase',
+                payload: { ...turnPayload, words }
+            });
         };
 
         this.game.onHintReveal = (wordDisplay) => {
@@ -203,6 +233,7 @@ class SkribblApp {
                 (!this.isHost && drawerId === this.peer.playerId);
 
             if (!isDrawer) {
+                this.publicWordDisplay = wordDisplay;
                 this.ui.updateWordDisplay(wordDisplay);
             }
 
@@ -285,12 +316,12 @@ class SkribblApp {
                     const result = this.game.checkGuess(myId, message);
 
                     if (result.correct) {
-                        this.chat.addCorrectGuessMessage(this.playerName);
+                        this.chat.addCorrectGuessMessage(this.playerName, result.score);
                         this.chat.setPlaceholder('You guessed it!');
                         this.chat.setEnabled(false);
                         this.peer.broadcast({
                             type: 'correctGuess',
-                            payload: { playerId: myId, playerName: this.playerName }
+                            payload: { playerId: myId, playerName: this.playerName, score: result.score }
                         });
                     } else if (result.close) {
                         this.chat.addCloseGuessMessage(this.playerName);
@@ -377,10 +408,10 @@ class SkribblApp {
                 if (this.isHost) {
                     const result = this.game.checkGuess(senderId, payload.message);
                     if (result.correct) {
-                        this.chat.addCorrectGuessMessage(payload.playerName);
+                        this.chat.addCorrectGuessMessage(payload.playerName, result.score);
                         this.peer.broadcast({
                             type: 'correctGuess',
-                            payload: { playerId: senderId, playerName: payload.playerName }
+                            payload: { playerId: senderId, playerName: payload.playerName, score: result.score }
                         });
                     } else if (result.close) {
                         this.chat.addCloseGuessMessage(payload.playerName);
@@ -393,13 +424,20 @@ class SkribblApp {
                         this.peer.broadcast({
                             type: 'chat',
                             payload: { playerName: payload.playerName, message: payload.message }
-                        }, senderId);
+                        });
                     }
                 }
                 break;
 
             case 'correctGuess':
-                this.chat.addCorrectGuessMessage(payload.playerName);
+                this.chat.addCorrectGuessMessage(payload.playerName, payload.score);
+                {
+                    const myId = this.isHost ? this.peer.roomCode : this.peer.playerId;
+                    if (payload.playerId && payload.playerId === myId) {
+                        this.chat.setPlaceholder('You guessed it!');
+                        this.chat.setEnabled(false);
+                    }
+                }
                 break;
 
             case 'closeGuess':
@@ -412,9 +450,16 @@ class SkribblApp {
 
             case 'wordSelectPhase':
                 this.ui.hideWordSelection();
+                // Sync turn state (clients rely on this for drawer detection and round display).
+                if (typeof payload.currentRound === 'number') this.game.currentRound = payload.currentRound;
+                if (typeof payload.currentDrawerIndex === 'number') this.game.currentDrawerIndex = payload.currentDrawerIndex;
+                if (Array.isArray(payload.drawingOrder)) this.game.drawingOrder = payload.drawingOrder;
+
                 const myId = this.isHost ? this.peer.roomCode : this.peer.playerId;
                 if (payload.drawerId === myId && payload.words) {
                     this.ui.showWordSelection(payload.words, (word) => {
+                        // Store locally so the drawer can see the word immediately.
+                        this.game.currentWord = word.toLowerCase();
                         this.peer.send({
                             type: 'wordChosen',
                             payload: { word }
@@ -427,16 +472,21 @@ class SkribblApp {
             case 'wordChosen':
                 if (this.isHost) {
                     this.game.selectWord(payload.word);
-                    this.peer.broadcast({
-                        type: 'drawingStart',
-                        payload: { drawerId: senderId }
-                    });
                 }
                 break;
 
             case 'wordSelected':
             case 'drawingStart':
                 this.ui.hideWordSelection();
+                // Sync turn state if provided.
+                if (payload && typeof payload.currentRound === 'number') this.game.currentRound = payload.currentRound;
+                if (payload && typeof payload.currentDrawerIndex === 'number') this.game.currentDrawerIndex = payload.currentDrawerIndex;
+                if (payload && Array.isArray(payload.drawingOrder)) this.game.drawingOrder = payload.drawingOrder;
+
+                if (payload && typeof payload.wordDisplay === 'string') {
+                    this.publicWordDisplay = payload.wordDisplay;
+                    this.ui.updateWordDisplay(payload.wordDisplay, 'GUESS THIS:');
+                }
                 this.handleGameStateChange('drawing');
                 break;
 
@@ -449,6 +499,7 @@ class SkribblApp {
                 break;
 
             case 'hintReveal':
+                this.publicWordDisplay = payload.wordDisplay;
                 this.ui.updateWordDisplay(payload.wordDisplay);
                 break;
 
@@ -474,16 +525,32 @@ class SkribblApp {
                 this.game.reset();
                 this.ui.showScreen('game');
                 break;
+
+            case 'yourWord':
+                if (payload?.word) {
+                    this.game.currentWord = payload.word.toLowerCase();
+                    const myId = this.isHost ? this.peer.roomCode : this.peer.playerId;
+                    if (this.game.state === 'drawing' && this.game.getCurrentDrawerId() === myId) {
+                        this.ui.updateWordDisplay(this.game.currentWord.toUpperCase(), 'DRAW THIS:');
+                    }
+                }
+                break;
         }
     }
 
     handleGameStateChange(state) {
+        // Keep local state in sync (clients don't run the full game logic).
+        this.game.state = state;
+
         const drawerId = this.game.getCurrentDrawerId();
         const myId = this.isHost ? this.peer.roomCode : this.peer.playerId;
         const isDrawer = myId === drawerId;
 
         switch (state) {
             case 'wordSelect':
+                this.publicWordDisplay = '';
+                // Clear between turns so the previous drawing doesn't linger.
+                this.canvas.clear(false);
                 this.canvas.setEnabled(false);
                 this.ui.setToolbarVisible(false);
                 this.chat.setEnabled(true);
@@ -494,8 +561,10 @@ class SkribblApp {
                 break;
 
             case 'drawing':
+                // New drawing phase: always start with a clean board for everyone.
+                this.canvas.clear(false);
+
                 if (isDrawer) {
-                    this.canvas.clear(false);
                     this.canvas.setEnabled(true);
                     this.ui.setToolbarVisible(true);
                     this.chat.setEnabled(false);
@@ -507,7 +576,8 @@ class SkribblApp {
                     this.ui.setToolbarVisible(false);
                     this.chat.setEnabled(true);
                     this.chat.setPlaceholder('Type your guess here...');
-                    this.ui.updateWordDisplay(this.game.getWordDisplay(false), 'GUESS THIS:');
+                    const display = this.publicWordDisplay || this.game.getWordDisplay(false) || '...';
+                    this.ui.updateWordDisplay(display, 'GUESS THIS:');
 
                     const drawer = this.game.getPlayer(drawerId);
                     if (drawer) {
@@ -520,12 +590,12 @@ class SkribblApp {
     }
 
     handleGameStart(payload) {
-        this.game.applyGameState(payload.gameState);
         this.ui.showScreen('game');
         // Resize canvas after screen is visible
         setTimeout(() => {
             this.canvas.resizeCanvas();
         }, 50);
+        this.game.applyGameState(payload.gameState);
         this.canvas.clear(false);
         this.chat.clear();
         this.chat.addSystemMessage('Game started!', 'success');
@@ -689,22 +759,30 @@ class SkribblApp {
     handleStartGame() {
         if (!this.isHost) return;
 
-        const result = this.game.startGame();
-        if (result.error) {
-            this.ui.showToast(result.error, 'error');
-            return;
-        }
-
         this.ui.showScreen('game');
+        // Resize canvas after screen is visible
+        setTimeout(() => {
+            this.canvas.resizeCanvas();
+        }, 50);
         this.canvas.clear(false);
         this.chat.clear();
         this.chat.addSystemMessage('Game started!', 'success');
+
+        const result = this.game.startGame({ deferTurnStart: true });
+        if (result.error) {
+            this.ui.showToast(result.error, 'error');
+            this.ui.showScreen('lobby');
+            return;
+        }
 
         // Broadcast game start
         this.peer.broadcast({
             type: 'gameStart',
             payload: { gameState: this.game.getGameState() }
         });
+
+        // Start the first turn AFTER peers have switched to the game screen.
+        this.game.startTurn();
     }
 
     handlePlayAgain() {

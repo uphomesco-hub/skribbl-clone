@@ -82,7 +82,8 @@ class PeerManager {
         return new Promise((resolve, reject) => {
             this.roomCode = roomCode.toUpperCase();
             this.isHost = false;
-            this.playerId = 'player_' + Math.random().toString(36).substr(2, 9);
+            const basePlayerId = 'player_' + Math.random().toString(36).substr(2, 9);
+            this.playerId = basePlayerId;
 
             let resolved = false;
             let retryCount = 0;
@@ -91,7 +92,9 @@ class PeerManager {
             const attemptConnection = () => {
                 console.log(`Attempting to connect to room: ${this.roomCode} (attempt ${retryCount + 1})`);
 
-                this.peer = new Peer(this.playerId + '_' + retryCount, {
+                const actualPeerId = `${basePlayerId}_${retryCount}`;
+                this.playerId = actualPeerId;
+                this.peer = new Peer(actualPeerId, {
                     debug: 2,
                     config: {
                         iceServers: this.iceServers

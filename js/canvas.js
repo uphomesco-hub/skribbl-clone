@@ -12,6 +12,10 @@ class CanvasManager {
         this.currentColor = '#000000';
         this.brushSize = 8;
 
+        this.dpr = 1;
+        this.logicalWidth = 0;
+        this.logicalHeight = 0;
+
         this.lastX = 0;
         this.lastY = 0;
 
@@ -62,34 +66,50 @@ class CanvasManager {
         const rect = container.getBoundingClientRect();
         if (rect.width === 0 || rect.height === 0) return;
 
-        // Save current canvas content
-        let imageData = null;
-        if (this.canvas.width > 0 && this.canvas.height > 0) {
-            try {
-                imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
-            } catch (e) {
-                // Canvas might not be ready
-            }
+        // Save current canvas content (in device pixels) so we can redraw it after resize.
+        const prevCanvas = document.createElement('canvas');
+        prevCanvas.width = this.canvas.width;
+        prevCanvas.height = this.canvas.height;
+        const prevCtx = prevCanvas.getContext('2d');
+        if (prevCtx && this.canvas.width > 0 && this.canvas.height > 0) {
+            prevCtx.drawImage(this.canvas, 0, 0);
         }
 
-        // Set canvas size to container size
-        this.canvas.width = rect.width;
-        this.canvas.height = rect.height;
+        const dpr = window.devicePixelRatio || 1;
+        const logicalWidth = Math.max(1, Math.floor(rect.width));
+        const logicalHeight = Math.max(1, Math.floor(rect.height));
+        const pixelWidth = Math.max(1, Math.floor(logicalWidth * dpr));
+        const pixelHeight = Math.max(1, Math.floor(logicalHeight * dpr));
+
+        this.dpr = dpr;
+        this.logicalWidth = logicalWidth;
+        this.logicalHeight = logicalHeight;
+
+        // Set canvas buffer size in device pixels, keep CSS size in logical pixels.
+        this.canvas.width = pixelWidth;
+        this.canvas.height = pixelHeight;
+        this.canvas.style.width = `${logicalWidth}px`;
+        this.canvas.style.height = `${logicalHeight}px`;
 
         // Restore canvas settings
         this.ctx.lineCap = 'round';
         this.ctx.lineJoin = 'round';
+        this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
 
         // Fill with white background
         this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.fillRect(0, 0, this.logicalWidth, this.logicalHeight);
 
-        // Try to restore content if dimensions are the same
-        if (imageData && imageData.width === this.canvas.width && imageData.height === this.canvas.height) {
-            this.ctx.putImageData(imageData, 0, 0);
+        // Restore previous content (scaled to the new size).
+        if (prevCanvas.width > 0 && prevCanvas.height > 0) {
+            this.ctx.drawImage(
+                prevCanvas,
+                0, 0, prevCanvas.width, prevCanvas.height,
+                0, 0, this.logicalWidth, this.logicalHeight
+            );
         }
 
-        console.log('Canvas resized to:', this.canvas.width, 'x', this.canvas.height);
+        console.log('Canvas resized to:', this.logicalWidth, 'x', this.logicalHeight, `(dpr ${this.dpr})`);
     }
 
     handleTouch(e, type) {
@@ -113,8 +133,8 @@ class CanvasManager {
     getCoordinates(e) {
         const rect = this.canvas.getBoundingClientRect();
         return {
-            x: (e.clientX - rect.left) * (this.canvas.width / rect.width),
-            y: (e.clientY - rect.top) * (this.canvas.height / rect.height)
+            x: Math.max(0, Math.min(this.logicalWidth || rect.width, e.clientX - rect.left)),
+            y: Math.max(0, Math.min(this.logicalHeight || rect.height, e.clientY - rect.top))
         };
     }
 
@@ -196,27 +216,45 @@ class CanvasManager {
 
     // Receive and apply drawing data from other players
     applyDrawData(data) {
+        const denormalize = (x, y) => {
+            if (!data.normalized) return { x, y };
+            return {
+                x: x * (this.logicalWidth || this.canvas.getBoundingClientRect().width),
+                y: y * (this.logicalHeight || this.canvas.getBoundingClientRect().height)
+            };
+        };
+
         switch (data.type) {
             case 'start':
-                this.ctx.beginPath();
-                this.ctx.moveTo(data.x, data.y);
-                this.ctx.lineTo(data.x + 0.1, data.y + 0.1);
-                this.ctx.strokeStyle = data.color;
-                this.ctx.lineWidth = data.size;
-                this.ctx.stroke();
+                {
+                    const p = denormalize(data.x, data.y);
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(p.x, p.y);
+                    this.ctx.lineTo(p.x + 0.1, p.y + 0.1);
+                    this.ctx.strokeStyle = data.color;
+                    this.ctx.lineWidth = data.size;
+                    this.ctx.stroke();
+                }
                 break;
 
             case 'draw':
-                this.ctx.beginPath();
-                this.ctx.moveTo(data.fromX, data.fromY);
-                this.ctx.lineTo(data.toX, data.toY);
-                this.ctx.strokeStyle = data.color;
-                this.ctx.lineWidth = data.size;
-                this.ctx.stroke();
+                {
+                    const from = denormalize(data.fromX, data.fromY);
+                    const to = denormalize(data.toX, data.toY);
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(from.x, from.y);
+                    this.ctx.lineTo(to.x, to.y);
+                    this.ctx.strokeStyle = data.color;
+                    this.ctx.lineWidth = data.size;
+                    this.ctx.stroke();
+                }
                 break;
 
             case 'fill':
-                this.fill(data.x, data.y, data.color);
+                {
+                    const p = denormalize(data.x, data.y);
+                    this.fill(p.x, p.y, data.color);
+                }
                 break;
 
             case 'clear':
@@ -228,8 +266,8 @@ class CanvasManager {
                     const img = new Image();
                     img.onload = () => {
                         this.ctx.fillStyle = '#FFFFFF';
-                        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-                        this.ctx.drawImage(img, 0, 0);
+                        this.ctx.fillRect(0, 0, this.logicalWidth, this.logicalHeight);
+                        this.ctx.drawImage(img, 0, 0, this.logicalWidth, this.logicalHeight);
                     };
                     img.src = data.imageData;
                 }
@@ -244,8 +282,10 @@ class CanvasManager {
         const width = this.canvas.width;
         const height = this.canvas.height;
 
-        x = Math.floor(x);
-        y = Math.floor(y);
+        const scale = this.dpr || 1;
+        x = Math.floor(x * scale);
+        y = Math.floor(y * scale);
+        if (x < 0 || x >= width || y < 0 || y >= height) return;
 
         const targetColor = this.getPixelColor(data, x, y, width);
         const fillRgb = this.hexToRgb(fillColor);
@@ -318,8 +358,8 @@ class CanvasManager {
         const img = new Image();
         img.onload = () => {
             this.ctx.fillStyle = '#FFFFFF';
-            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-            this.ctx.drawImage(img, 0, 0);
+            this.ctx.fillRect(0, 0, this.logicalWidth, this.logicalHeight);
+            this.ctx.drawImage(img, 0, 0, this.logicalWidth, this.logicalHeight);
         };
         img.src = imageData;
 
@@ -332,7 +372,9 @@ class CanvasManager {
     // Clear canvas
     clear(sendEvent = true) {
         this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        const w = this.logicalWidth || this.canvas.getBoundingClientRect().width || this.canvas.width;
+        const h = this.logicalHeight || this.canvas.getBoundingClientRect().height || this.canvas.height;
+        this.ctx.fillRect(0, 0, w, h);
         this.undoStack = [];
 
         if (sendEvent) {
@@ -364,7 +406,37 @@ class CanvasManager {
 
     // Send draw data callback
     sendDrawData(data) {
+        // Normalize coordinate payloads so drawings render correctly across different canvas sizes.
+        const normalize = (x, y) => ({
+            x: x / (this.logicalWidth || 1),
+            y: y / (this.logicalHeight || 1)
+        });
+
         if (this.onDraw) {
+            if (data.type === 'start') {
+                const p = normalize(data.x, data.y);
+                this.onDraw({ ...data, ...p, normalized: true });
+                return;
+            }
+            if (data.type === 'draw') {
+                const from = normalize(data.fromX, data.fromY);
+                const to = normalize(data.toX, data.toY);
+                this.onDraw({
+                    ...data,
+                    fromX: from.x,
+                    fromY: from.y,
+                    toX: to.x,
+                    toY: to.y,
+                    normalized: true
+                });
+                return;
+            }
+            if (data.type === 'fill') {
+                const p = normalize(data.x, data.y);
+                this.onDraw({ ...data, ...p, normalized: true });
+                return;
+            }
+
             this.onDraw(data);
         }
     }

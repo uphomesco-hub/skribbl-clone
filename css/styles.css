@@ -587,6 +587,7 @@ body {
     gap: 10px;
     height: 100%;
     max-height: 100vh;
+    overflow: hidden;
 }
 
 /* Players Sidebar */
@@ -595,6 +596,7 @@ body {
     flex-direction: column;
     padding: 15px;
     overflow: hidden;
+    min-height: 0;
 }
 
 .sidebar-header {
@@ -684,6 +686,7 @@ body {
     flex-direction: column;
     gap: 10px;
     min-height: 0;
+    position: relative;
 }
 
 .game-header {
@@ -901,6 +904,11 @@ body {
     gap: 10px;
     padding: 12px 20px;
     flex-wrap: wrap;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 5;
 }
 
 .color-palette {
@@ -1008,6 +1016,7 @@ body {
     display: flex;
     flex-direction: column;
     padding: 15px;
+    min-height: 0;
 }
 
 .chat-messages {
