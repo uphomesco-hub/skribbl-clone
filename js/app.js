@@ -23,6 +23,8 @@ class SkribblApp {
     }
 
     async init() {
+        this.initVersionBadge();
+
         // Load words
         await this.game.loadWords();
 
@@ -47,6 +49,43 @@ class SkribblApp {
         this.setupCanvasCallbacks();
         this.setupChatCallbacks();
         this.ui.setupMobileSidebars();
+    }
+
+    initVersionBadge() {
+        const versionEl = document.getElementById('app-version');
+        if (!versionEl) return;
+
+        const setText = (text) => {
+            versionEl.textContent = text;
+        };
+
+        // Fallback (may be inaccurate on some hosts).
+        if (document.lastModified) {
+            const d = new Date(document.lastModified);
+            if (!Number.isNaN(d.getTime())) setText(d.toLocaleString());
+        }
+
+        // Prefer server-provided Last-Modified/ETag (updates automatically on each deploy).
+        const url = window.location.origin + window.location.pathname;
+        fetch(url, { method: 'HEAD', cache: 'no-store' })
+            .then((res) => {
+                const lastModified = res.headers.get('last-modified');
+                if (lastModified) {
+                    const d = new Date(lastModified);
+                    if (!Number.isNaN(d.getTime())) {
+                        setText(d.toLocaleString());
+                        return;
+                    }
+                    setText(lastModified);
+                    return;
+                }
+
+                const etag = res.headers.get('etag');
+                if (etag) {
+                    setText(etag.replace(/W\\//, '').replace(/\"/g, ''));
+                }
+            })
+            .catch(() => {});
     }
 
     setupEventListeners() {

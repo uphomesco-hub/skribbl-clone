@@ -72,6 +72,21 @@ body {
     display: none;
 }
 
+/* Version Badge */
+.version-badge {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    z-index: 1000;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    pointer-events: none;
+}
+
 /* ===== Buttons ===== */
 .btn {
     display: inline-flex;
