@@ -283,32 +283,86 @@ class CanvasManager {
         const height = this.canvas.height;
 
         const scale = this.dpr || 1;
-        x = Math.floor(x * scale);
-        y = Math.floor(y * scale);
-        if (x < 0 || x >= width || y < 0 || y >= height) return;
+        const startX = Math.floor(x * scale);
+        const startY = Math.floor(y * scale);
+        if (startX < 0 || startX >= width || startY < 0 || startY >= height) return;
 
-        const targetColor = this.getPixelColor(data, x, y, width);
         const fillRgb = this.hexToRgb(fillColor);
 
-        if (this.colorsMatch(targetColor, fillRgb)) return;
+        const startIdx = (startY * width + startX) * 4;
+        const targetR = data[startIdx];
+        const targetG = data[startIdx + 1];
+        const targetB = data[startIdx + 2];
 
-        const stack = [[x, y]];
-        const visited = new Set();
+        // If we're already on the fill color, do nothing.
+        if (targetR === fillRgb.r && targetG === fillRgb.g && targetB === fillRgb.b) return;
 
-        while (stack.length > 0) {
-            const [cx, cy] = stack.pop();
-            const key = `${cx},${cy}`;
+        // Tolerance helps fill through anti-aliased edges; keep modest for performance.
+        const tolerance = 32;
 
-            if (visited.has(key)) continue;
-            if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue;
+        const matchesTarget = (px, py) => {
+            const idx = (py * width + px) * 4;
+            const r = data[idx];
+            const g = data[idx + 1];
+            const b = data[idx + 2];
 
-            const currentColor = this.getPixelColor(data, cx, cy, width);
-            if (!this.colorsMatch(currentColor, targetColor, 32)) continue;
+            // If we've already filled this pixel, don't revisit it (prevents loops when tolerance is high).
+            if (r === fillRgb.r && g === fillRgb.g && b === fillRgb.b) return false;
 
-            visited.add(key);
-            this.setPixelColor(data, cx, cy, width, fillRgb);
+            return Math.abs(r - targetR) <= tolerance &&
+                Math.abs(g - targetG) <= tolerance &&
+                Math.abs(b - targetB) <= tolerance;
+        };
 
-            stack.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]);
+        const setFill = (px, py) => {
+            const idx = (py * width + px) * 4;
+            data[idx] = fillRgb.r;
+            data[idx + 1] = fillRgb.g;
+            data[idx + 2] = fillRgb.b;
+            data[idx + 3] = 255;
+        };
+
+        // Scanline flood fill (much faster than per-pixel + Set visited).
+        const stack = [startX, startY];
+        while (stack.length) {
+            const cy = stack.pop();
+            const cx = stack.pop();
+
+            // Find top of span
+            let y1 = cy;
+            while (y1 >= 0 && matchesTarget(cx, y1)) y1--;
+            y1++;
+
+            let reachLeft = false;
+            let reachRight = false;
+
+            while (y1 < height && matchesTarget(cx, y1)) {
+                setFill(cx, y1);
+
+                if (cx > 0) {
+                    if (matchesTarget(cx - 1, y1)) {
+                        if (!reachLeft) {
+                            stack.push(cx - 1, y1);
+                            reachLeft = true;
+                        }
+                    } else {
+                        reachLeft = false;
+                    }
+                }
+
+                if (cx < width - 1) {
+                    if (matchesTarget(cx + 1, y1)) {
+                        if (!reachRight) {
+                            stack.push(cx + 1, y1);
+                            reachRight = true;
+                        }
+                    } else {
+                        reachRight = false;
+                    }
+                }
+
+                y1++;
+            }
         }
 
         this.ctx.putImageData(imageData, 0, 0);

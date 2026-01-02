@@ -87,6 +87,18 @@ body {
     pointer-events: none;
 }
 
+.footer-credit {
+    position: fixed;
+    left: 50%;
+    bottom: 10px;
+    transform: translateX(-50%);
+    z-index: 1000;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    pointer-events: none;
+    user-select: none;
+}
+
 /* ===== Buttons ===== */
 .btn {
     display: inline-flex;
@@ -928,6 +940,13 @@ body {
     color: var(--success);
 }
 
+.game-end-status {
+    margin-top: 12px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+    opacity: 0.85;
+}
+
 /* Drawing Toolbar */
 .drawing-toolbar {
     display: flex;
@@ -1162,6 +1181,7 @@ body {
 
 #send-chat-btn {
     flex-shrink: 0;
+    padding: 10px 16px;
 }
 
 #chat-input:focus {

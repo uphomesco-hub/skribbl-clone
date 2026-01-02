@@ -30,6 +30,13 @@ class UIManager {
             this.screens[screenName].classList.remove('hidden');
             this.screens[screenName].classList.add('active');
         }
+
+        // Only show version/credit on landing + lobby (not inside the game UI)
+        const showMeta = screenName !== 'game';
+        const versionBadge = document.getElementById('version-badge');
+        const footerCredit = document.getElementById('footer-credit');
+        if (versionBadge) versionBadge.classList.toggle('hidden', !showMeta);
+        if (footerCredit) footerCredit.classList.toggle('hidden', !showMeta);
     }
 
     // Show a modal
@@ -252,6 +259,7 @@ class UIManager {
     showGameEnd(standings) {
         const overlay = document.getElementById('game-end');
         const standingsEl = document.getElementById('final-standings');
+        this.resetGameEndControls();
 
         standingsEl.innerHTML = '';
 
@@ -273,7 +281,30 @@ class UIManager {
 
     // Hide game end overlay
     hideGameEnd() {
+        this.resetGameEndControls();
         document.getElementById('game-end').classList.add('hidden');
+    }
+
+    setGameEndStatus(message) {
+        const el = document.getElementById('game-end-status');
+        if (!el) return;
+        const msg = String(message || '').trim();
+        if (!msg) {
+            el.textContent = '';
+            el.classList.add('hidden');
+            return;
+        }
+        el.textContent = msg;
+        el.classList.remove('hidden');
+    }
+
+    resetGameEndControls() {
+        const btn = document.getElementById('play-again-btn');
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Play Again';
+        }
+        this.setGameEndStatus('');
     }
 
     // Update round display

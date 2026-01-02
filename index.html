@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Skribbl Clone - Draw & Guess Game</title>
+    <title>Scribble</title>
     <meta name="description" content="A fun multiplayer drawing and guessing game. Create or join a room and play with friends!">
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -15,7 +16,7 @@
     <div id="landing-screen" class="screen active">
         <div class="landing-container">
             <div class="logo-section">
-                <h1 class="logo">✏️ Skribbl</h1>
+                <h1 class="logo">✏️ Scribble</h1>
                 <p class="tagline">Draw, Guess & Have Fun!</p>
             </div>
             
@@ -242,6 +243,7 @@
                             <h2>🏆 Game Over!</h2>
                             <div id="final-standings" class="final-standings"></div>
                             <button id="play-again-btn" class="btn btn-primary btn-large">Play Again</button>
+                            <p id="game-end-status" class="game-end-status hidden"></p>
                         </div>
                     </div>
                 </div>
@@ -313,6 +315,9 @@
         <span>Version:</span>
         <span id="app-version">Loading…</span>
     </div>
+
+    <!-- Footer Credit (Landing/Lobby only) -->
+    <div id="footer-credit" class="footer-credit">Made by Yashovrat</div>
 
     <!-- Scripts -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>

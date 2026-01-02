@@ -545,7 +545,12 @@ class SkribblApp {
 
                 if (payload && typeof payload.wordDisplay === 'string') {
                     this.publicWordDisplay = payload.wordDisplay;
-                    this.ui.updateWordDisplay(payload.wordDisplay, 'GUESS THIS:');
+                    const myId = this.isHost ? this.peer.roomCode : this.peer.playerId;
+                    const isDrawer = this.game.getCurrentDrawerId() === myId;
+                    // Don't overwrite the drawer's "DRAW THIS" word with the public masked word.
+                    if (!isDrawer) {
+                        this.ui.updateWordDisplay(payload.wordDisplay, 'GUESS THIS:');
+                    }
                 }
                 this.handleGameStateChange('drawing');
                 break;
@@ -559,8 +564,15 @@ class SkribblApp {
                 break;
 
             case 'hintReveal':
+                // Hint reveals are meant for guessers; the drawer should keep seeing the full word.
                 this.publicWordDisplay = payload.wordDisplay;
-                this.ui.updateWordDisplay(payload.wordDisplay);
+                {
+                    const myId = this.isHost ? this.peer.roomCode : this.peer.playerId;
+                    const isDrawer = this.game.getCurrentDrawerId() === myId;
+                    if (!isDrawer) {
+                        this.ui.updateWordDisplay(payload.wordDisplay);
+                    }
+                }
                 break;
 
             case 'roundEnd':
@@ -800,6 +812,14 @@ class SkribblApp {
             return;
         }
 
+        const confirmBtn = document.getElementById('confirm-settings-btn');
+        const originalText = confirmBtn ? confirmBtn.textContent : '';
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = 'Creating...';
+        }
+        this.ui.showToast('Creating room...', 'default', 2000);
+
         try {
             await this.peer.createRoom();
             this.isHost = true;
@@ -824,6 +844,11 @@ class SkribblApp {
 
         } catch (error) {
             this.ui.showToast('Could not create room: ' + error.message, 'error');
+        } finally {
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = originalText || 'Create Room';
+            }
         }
     }
 
@@ -915,7 +940,15 @@ class SkribblApp {
     }
 
     handlePlayAgain() {
-        if (!this.isHost) return;
+        if (!this.isHost) {
+            const btn = document.getElementById('play-again-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Waiting for host...';
+            }
+            this.ui.setGameEndStatus('Waiting for host to restart...');
+            return;
+        }
 
         this.ui.hideGameEnd();
         this.canvas.clear(false);
