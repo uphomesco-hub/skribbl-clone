@@ -51,6 +51,30 @@ class UIManager {
         return this.playerColors[index % this.playerColors.length];
     }
 
+    fitNameToSingleLine(el, name) {
+        if (!el) return;
+        const n = String(name || '');
+        const len = n.length;
+        let size = '0.9rem';
+        if (len > 20) size = '0.75rem';
+        else if (len > 16) size = '0.8rem';
+        else if (len > 12) size = '0.85rem';
+        el.style.fontSize = size;
+        el.style.lineHeight = '1.15';
+
+        // If it still doesn't fit, shrink further until it does (or we hit the minimum).
+        requestAnimationFrame(() => {
+            const rootFont = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+            const minPx = 0.6 * rootFont;
+            let currentPx = parseFloat(getComputedStyle(el).fontSize) || (0.9 * rootFont);
+
+            while (el.scrollWidth > el.clientWidth && currentPx > minPx) {
+                currentPx -= 1;
+                el.style.fontSize = `${currentPx}px`;
+            }
+        });
+    }
+
     // Update lobby player list
     updateLobbyPlayers(players, maxPlayers) {
         const list = document.getElementById('lobby-player-list');
@@ -70,6 +94,7 @@ class UIManager {
             const name = document.createElement('span');
             name.className = 'player-name';
             name.textContent = player.name;
+            this.fitNameToSingleLine(name, player.name);
 
             li.appendChild(avatar);
             li.appendChild(name);
@@ -141,6 +166,7 @@ class UIManager {
                 <div class="player-name">${player.name}</div>
                 <div class="player-score">${player.score} pts</div>
             `;
+            this.fitNameToSingleLine(info.querySelector('.player-name'), player.name);
 
             const icons = document.createElement('div');
             icons.className = 'player-icons';
@@ -191,7 +217,8 @@ class UIManager {
 
     // Update word selection timer
     updateWordSelectionTimer(time) {
-        document.getElementById('word-timer-display').textContent = time;
+        const t = Math.max(0, parseInt(time, 10) || 0);
+        document.getElementById('word-timer-display').textContent = t;
     }
 
     // Show round end overlay

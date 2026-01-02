@@ -517,6 +517,8 @@ class SkribblApp {
 
             case 'wordChosen':
                 if (this.isHost) {
+                    if (this.game.state !== 'wordSelect') break;
+                    if (senderId !== this.game.getCurrentDrawerId()) break;
                     this.game.selectWord(payload.word);
                 }
                 break;
@@ -627,6 +629,7 @@ class SkribblApp {
                 break;
 
             case 'drawing':
+                this.ui.hideWordSelection();
                 // New drawing phase: always start with a clean board for everyone.
                 this.canvas.clear(false);
 

@@ -160,6 +160,15 @@ class GameManager {
 
     // Start a new turn
     startTurn() {
+        if (this.wordSelectTimer) {
+            clearInterval(this.wordSelectTimer);
+            this.wordSelectTimer = null;
+        }
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+
         this.state = 'wordSelect';
         this.roundScores.clear();
 
@@ -180,14 +189,19 @@ class GameManager {
         }
 
         // Auto-select after 15 seconds
-        let wordSelectTime = 15;
+        const maxWordSelectTime = 15;
+        let wordSelectTime = maxWordSelectTime;
+        if (this.onTimerUpdate) {
+            this.onTimerUpdate(wordSelectTime, maxWordSelectTime);
+        }
         this.wordSelectTimer = setInterval(() => {
-            wordSelectTime--;
+            wordSelectTime = Math.max(0, wordSelectTime - 1);
             if (this.onTimerUpdate) {
-                this.onTimerUpdate(wordSelectTime, 15);
+                this.onTimerUpdate(wordSelectTime, maxWordSelectTime);
             }
             if (wordSelectTime <= 0) {
                 clearInterval(this.wordSelectTimer);
+                this.wordSelectTimer = null;
                 // Auto-select random word
                 const randomWord = wordOptions[Math.floor(Math.random() * wordOptions.length)];
                 this.selectWord(randomWord);
@@ -218,7 +232,10 @@ class GameManager {
 
     // Word selected by drawer
     selectWord(word) {
-        clearInterval(this.wordSelectTimer);
+        if (this.wordSelectTimer) {
+            clearInterval(this.wordSelectTimer);
+            this.wordSelectTimer = null;
+        }
 
         this.currentWord = word.toLowerCase();
         this.revealedLetters = [];

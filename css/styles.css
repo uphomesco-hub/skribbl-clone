@@ -75,11 +75,11 @@ body {
 /* Version Badge */
 .version-badge {
     position: fixed;
-    bottom: 10px;
     right: 10px;
+    top: 10px;
     z-index: 1000;
-    padding: 8px 12px;
-    font-size: 0.8rem;
+    padding: 6px 10px;
+    font-size: 0.7rem;
     color: var(--text-secondary);
     display: inline-flex;
     gap: 8px;
@@ -1132,10 +1132,12 @@ body {
 .chat-input-container {
     display: flex;
     gap: 8px;
+    align-items: stretch;
 }
 
 #chat-input {
     flex: 1;
+    min-width: 0;
     padding: 12px 15px;
     font-size: 0.9rem;
     font-family: var(--font-family);
@@ -1143,6 +1145,10 @@ body {
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-sm);
     color: var(--text-primary);
+}
+
+#send-chat-btn {
+    flex-shrink: 0;
 }
 
 #chat-input:focus {
