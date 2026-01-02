@@ -358,7 +358,16 @@ class GameManager {
 
     // End current turn
     endTurn() {
-        clearInterval(this.timerInterval);
+        // Clear all timers
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+        if (this.wordSelectTimer) {
+            clearInterval(this.wordSelectTimer);
+            this.wordSelectTimer = null;
+        }
+
         this.state = 'roundEnd';
 
         const roundData = {
@@ -375,8 +384,11 @@ class GameManager {
         }
 
         // Move to next turn after delay
-        setTimeout(() => {
-            this.nextTurn();
+        this.nextTurnTimeout = setTimeout(() => {
+            // Only proceed if still in roundEnd state
+            if (this.state === 'roundEnd') {
+                this.nextTurn();
+            }
         }, 4000);
     }
 
@@ -402,7 +414,20 @@ class GameManager {
 
     // End the game
     endGame() {
-        clearInterval(this.timerInterval);
+        // Clear ALL timers
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+        if (this.wordSelectTimer) {
+            clearInterval(this.wordSelectTimer);
+            this.wordSelectTimer = null;
+        }
+        if (this.nextTurnTimeout) {
+            clearTimeout(this.nextTurnTimeout);
+            this.nextTurnTimeout = null;
+        }
+
         this.state = 'gameEnd';
 
         // Sort players by score
@@ -420,8 +445,19 @@ class GameManager {
 
     // Reset for new game
     reset() {
-        clearInterval(this.timerInterval);
-        clearInterval(this.wordSelectTimer);
+        // Clear ALL timers
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+        if (this.wordSelectTimer) {
+            clearInterval(this.wordSelectTimer);
+            this.wordSelectTimer = null;
+        }
+        if (this.nextTurnTimeout) {
+            clearTimeout(this.nextTurnTimeout);
+            this.nextTurnTimeout = null;
+        }
 
         this.state = 'lobby';
         this.currentRound = 1;

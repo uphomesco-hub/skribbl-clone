@@ -24,8 +24,16 @@ class CanvasManager {
     }
 
     init() {
+        // Set canvas context properties
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+
         this.resizeCanvas();
         window.addEventListener('resize', () => this.resizeCanvas());
+        // Resize again after window fully loads
+        window.addEventListener('load', () => {
+            setTimeout(() => this.resizeCanvas(), 100);
+        });
 
         // Mouse events
         this.canvas.addEventListener('mousedown', (e) => this.startDrawing(e));
@@ -44,17 +52,27 @@ class CanvasManager {
             if (this.isEnabled) e.preventDefault();
         }, { passive: false });
 
-        this.clear();
+        this.clear(false);
     }
 
     resizeCanvas() {
         const container = this.canvas.parentElement;
+        if (!container) return;
+
         const rect = container.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
 
         // Save current canvas content
-        const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+        let imageData = null;
+        if (this.canvas.width > 0 && this.canvas.height > 0) {
+            try {
+                imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+            } catch (e) {
+                // Canvas might not be ready
+            }
+        }
 
-        // Set canvas size
+        // Set canvas size to container size
         this.canvas.width = rect.width;
         this.canvas.height = rect.height;
 
@@ -67,9 +85,11 @@ class CanvasManager {
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         // Try to restore content if dimensions are the same
-        if (imageData.width === this.canvas.width && imageData.height === this.canvas.height) {
+        if (imageData && imageData.width === this.canvas.width && imageData.height === this.canvas.height) {
             this.ctx.putImageData(imageData, 0, 0);
         }
+
+        console.log('Canvas resized to:', this.canvas.width, 'x', this.canvas.height);
     }
 
     handleTouch(e, type) {

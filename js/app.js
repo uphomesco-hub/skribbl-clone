@@ -273,53 +273,49 @@ class SkribblApp {
             const myId = this.isHost ? this.peer.roomCode : this.peer.playerId;
             const isDrawer = myId === drawerId;
 
+            // Drawer can't send messages during drawing phase
+            if (this.game.state === 'drawing' && isDrawer) {
+                return; // Ignore messages from drawer
+            }
+
             if (this.game.state === 'drawing' && !isDrawer) {
-                // Check if it's a guess
-                const result = this.game.checkGuess(myId, message);
+                // All guesses go to host for validation
+                if (this.isHost) {
+                    // Host validates locally
+                    const result = this.game.checkGuess(myId, message);
 
-                if (result.correct) {
-                    this.chat.addCorrectGuessMessage(this.playerName);
-                    this.chat.setPlaceholder('You guessed it!');
-                    this.chat.setEnabled(false);
-
-                    if (this.isHost) {
+                    if (result.correct) {
+                        this.chat.addCorrectGuessMessage(this.playerName);
+                        this.chat.setPlaceholder('You guessed it!');
+                        this.chat.setEnabled(false);
                         this.peer.broadcast({
                             type: 'correctGuess',
                             payload: { playerId: myId, playerName: this.playerName }
                         });
-                    } else {
-                        this.peer.send({
-                            type: 'guess',
-                            payload: { message, playerName: this.playerName }
-                        });
-                    }
-                } else if (result.close) {
-                    this.chat.addCloseGuessMessage(this.playerName);
-
-                    if (this.isHost) {
+                    } else if (result.close) {
+                        this.chat.addCloseGuessMessage(this.playerName);
                         this.peer.broadcast({
                             type: 'closeGuess',
                             payload: { playerName: this.playerName }
                         });
-                    }
-                } else {
-                    // Regular message
-                    this.chat.addPlayerMessage(this.playerName, message);
-
-                    if (this.isHost) {
+                    } else {
+                        // Show wrong guess in chat (don't reveal correct answer)
+                        this.chat.addPlayerMessage(this.playerName, message);
                         this.peer.broadcast({
                             type: 'chat',
                             payload: { playerName: this.playerName, message }
                         });
-                    } else {
-                        this.peer.send({
-                            type: 'guess',
-                            payload: { message, playerName: this.playerName }
-                        });
                     }
+                } else {
+                    // Non-host sends guess to host for validation
+                    this.peer.send({
+                        type: 'guess',
+                        payload: { message, playerName: this.playerName }
+                    });
+                    // Don't show locally yet - wait for host response
                 }
             } else {
-                // Regular chat message
+                // Regular chat message (not during drawing or in lobby)
                 this.chat.addPlayerMessage(this.playerName, message);
 
                 const msgData = {
@@ -526,6 +522,10 @@ class SkribblApp {
     handleGameStart(payload) {
         this.game.applyGameState(payload.gameState);
         this.ui.showScreen('game');
+        // Resize canvas after screen is visible
+        setTimeout(() => {
+            this.canvas.resizeCanvas();
+        }, 50);
         this.canvas.clear(false);
         this.chat.clear();
         this.chat.addSystemMessage('Game started!', 'success');
