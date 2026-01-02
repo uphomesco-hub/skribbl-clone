@@ -83,7 +83,7 @@ class UIManager {
     }
 
     // Update lobby player list
-    updateLobbyPlayers(players, maxPlayers) {
+    updateLobbyPlayers(players, maxPlayers, { canKick = false, selfId = null } = {}) {
         const list = document.getElementById('lobby-player-list');
         const countSpan = document.getElementById('player-count');
 
@@ -111,6 +111,16 @@ class UIManager {
                 crown.className = 'player-crown';
                 crown.textContent = '👑';
                 li.appendChild(crown);
+            }
+
+            if (canKick && !player.isHost && player.id !== selfId) {
+                const kickBtn = document.createElement('button');
+                kickBtn.className = 'kick-btn';
+                kickBtn.type = 'button';
+                kickBtn.setAttribute('data-peer-id', player.id);
+                kickBtn.setAttribute('title', 'Kick player');
+                kickBtn.textContent = '✖';
+                li.appendChild(kickBtn);
             }
 
             list.appendChild(li);
@@ -141,7 +151,7 @@ class UIManager {
     }
 
     // Update game player list
-    updateGamePlayers(players, currentDrawerId) {
+    updateGamePlayers(players, currentDrawerId, { canKick = false, selfId = null } = {}) {
         const list = document.getElementById('game-player-list');
         list.innerHTML = '';
 
@@ -186,6 +196,10 @@ class UIManager {
             }
             if (player.hasGuessed) {
                 icons.innerHTML += '<span title="Guessed">✓</span>';
+            }
+
+            if (canKick && !player.isHost && player.id !== selfId) {
+                icons.innerHTML += `<button class="kick-btn" type="button" data-peer-id="${player.id}" title="Kick player">✖</button>`;
             }
 
             li.appendChild(rank);

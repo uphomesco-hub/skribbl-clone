@@ -275,6 +275,22 @@ class PeerManager {
         this.isHost = false;
         this.roomCode = null;
     }
+
+    // Kick a peer (host only)
+    kickPeer(peerId, reason = 'You were removed by the host.') {
+        if (!this.isHost) return;
+        const conn = this.connections.get(peerId);
+        if (!conn) return;
+        try {
+            if (conn.open) {
+                conn.send({ type: 'kicked', payload: { reason } });
+            }
+        } catch { }
+        try {
+            conn.close();
+        } catch { }
+        this.connections.delete(peerId);
+    }
 }
 
 export default PeerManager;

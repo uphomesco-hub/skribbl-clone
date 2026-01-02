@@ -6,6 +6,7 @@ import CanvasManager from './canvas.js';
 import GameManager from './game.js';
 import ChatManager from './chat.js';
 import UIManager from './ui.js';
+import SoundManager from './sound.js';
 
 class SkribblApp {
     constructor() {
@@ -14,17 +15,21 @@ class SkribblApp {
         this.game = new GameManager();
         this.chat = new ChatManager('chat-messages', 'chat-input', 'send-chat-btn');
         this.ui = new UIManager();
+        this.sound = new SoundManager();
 
         this.playerName = '';
         this.isHost = false;
         this.publicWordDisplay = '';
         this.isEditingSettings = false;
+        this.kickedPeers = new Set();
 
         this.init();
     }
 
     async init() {
         this.initVersionBadge();
+        this.sound.installUnlock();
+        this.sound.updateToggleUI();
 
         // Load words
         await this.game.loadWords();
@@ -112,12 +117,34 @@ class SkribblApp {
 
         // Host controls
         document.getElementById('end-game-btn').addEventListener('click', () => this.handleEndGame());
+        document.getElementById('sound-toggle-btn').addEventListener('click', () => this.sound.toggle());
 
         // Game - Drawing tools
         this.setupDrawingTools();
 
         // Play again
         document.getElementById('play-again-btn').addEventListener('click', () => this.handlePlayAgain());
+
+        // Host-only kick buttons (event delegation)
+        const lobbyList = document.getElementById('lobby-player-list');
+        if (lobbyList) {
+            lobbyList.addEventListener('click', (e) => {
+                const btn = e.target.closest('.kick-btn');
+                if (!btn) return;
+                const peerId = btn.getAttribute('data-peer-id');
+                if (peerId) this.handleKickPlayer(peerId);
+            });
+        }
+
+        const gameList = document.getElementById('game-player-list');
+        if (gameList) {
+            gameList.addEventListener('click', (e) => {
+                const btn = e.target.closest('.kick-btn');
+                if (!btn) return;
+                const peerId = btn.getAttribute('data-peer-id');
+                if (peerId) this.handleKickPlayer(peerId);
+            });
+        }
     }
 
     setupDrawingTools() {
@@ -181,8 +208,19 @@ class SkribblApp {
             const player = this.game.getPlayer(peerId);
             if (player) {
                 this.chat.addSystemMessage(`${player.name} left the game`, 'default');
+                this.sound.play('playerLeave');
                 this.game.removePlayer(peerId);
                 this.updatePlayerLists();
+                if (this.isHost) {
+                    this.peer.broadcast({
+                        type: 'playersUpdate',
+                        payload: { players: Array.from(this.game.players.entries()) }
+                    });
+                    this.peer.broadcast({
+                        type: 'systemMessage',
+                        payload: { event: 'playerLeave', message: `${player.name} left the game`, level: 'default' }
+                    });
+                }
             }
         };
 
@@ -202,6 +240,7 @@ class SkribblApp {
 
             // Host is authoritative for state transitions; notify peers about drawing phase start.
             if (this.isHost && state === 'drawing') {
+                this.sound.play('drawingStart');
                 const drawerId = this.game.getCurrentDrawerId();
                 const wordDisplay = this.game.getWordDisplay(false);
 
@@ -232,6 +271,7 @@ class SkribblApp {
             } else {
                 this.ui.updateTimerDisplay(time, maxTime);
             }
+            this.sound.handleTimerTick(time, this.game.state);
 
             // Broadcast timer update
             if (this.isHost) {
@@ -259,6 +299,7 @@ class SkribblApp {
             });
 
             if (drawerId === this.peer.roomCode) {
+                this.sound.play('wordSelect');
                 this.ui.showWordSelection(words, (word) => {
                     this.game.selectWord(word);
                 });
@@ -303,6 +344,7 @@ class SkribblApp {
         this.game.onRoundEnd = (roundData) => {
             this.ui.showRoundEnd(roundData.word, roundData.scores);
             this.chat.addSystemMessage(`The word was: ${roundData.word}`, 'success');
+            this.sound.play('roundEnd');
 
             if (this.isHost) {
                 this.peer.broadcast({
@@ -316,6 +358,7 @@ class SkribblApp {
             this.ui.showGameEnd(standings);
             this.canvas.setEnabled(false);
             this.ui.setToolbarVisible(false);
+            this.sound.play('gameEnd');
 
             if (this.isHost) {
                 this.peer.broadcast({
@@ -361,6 +404,7 @@ class SkribblApp {
 
                     if (result.correct) {
                         this.chat.addCorrectGuessMessage(this.playerName, result.score);
+                        this.sound.play('correct');
                         this.chat.setPlaceholder('You guessed it!');
                         this.chat.setEnabled(false);
                         this.peer.broadcast({
@@ -368,10 +412,13 @@ class SkribblApp {
                             payload: { playerId: myId, playerName: this.playerName, score: result.score }
                         });
                     } else if (result.close) {
-                        this.chat.addCloseGuessMessage(this.playerName);
+                        // Show guess publicly, but "close" hint only to the guesser.
+                        this.chat.addPlayerMessage(this.playerName, message);
+                        this.chat.addSystemMessage('You are close!', 'info');
+                        this.sound.play('close');
                         this.peer.broadcast({
-                            type: 'closeGuess',
-                            payload: { playerName: this.playerName }
+                            type: 'chat',
+                            payload: { playerName: this.playerName, message }
                         });
                     } else {
                         // Show wrong guess in chat (don't reveal correct answer)
@@ -414,12 +461,17 @@ class SkribblApp {
             case 'playerInfo':
                 this.game.addPlayer(senderId, payload.name);
                 this.chat.addSystemMessage(`${payload.name} joined the room!`, 'success');
+                this.sound.play('playerJoin');
                 this.updatePlayerLists();
                 this.updateStartButton();
                 // Broadcast updated player list
                 this.peer.broadcast({
                     type: 'playersUpdate',
                     payload: { players: Array.from(this.game.players.entries()) }
+                });
+                this.peer.broadcast({
+                    type: 'systemMessage',
+                    payload: { event: 'playerJoin', message: `${payload.name} joined the room!`, level: 'success' }
                 });
                 break;
 
@@ -472,10 +524,15 @@ class SkribblApp {
                             payload: { playerId: senderId, playerName: payload.playerName, score: result.score }
                         });
                     } else if (result.close) {
-                        this.chat.addCloseGuessMessage(payload.playerName);
+                        // Show guess publicly, but "close" hint only to the guesser.
+                        this.chat.addPlayerMessage(payload.playerName, payload.message);
                         this.peer.broadcast({
-                            type: 'closeGuess',
-                            payload: { playerName: payload.playerName }
+                            type: 'chat',
+                            payload: { playerName: payload.playerName, message: payload.message }
+                        });
+                        this.peer.sendTo(senderId, {
+                            type: 'closeHint',
+                            payload: {}
                         });
                     } else {
                         this.chat.addPlayerMessage(payload.playerName, payload.message);
@@ -492,18 +549,25 @@ class SkribblApp {
                 {
                     const myId = this.isHost ? this.peer.roomCode : this.peer.playerId;
                     if (payload.playerId && payload.playerId === myId) {
+                        this.sound.play('correct');
                         this.chat.setPlaceholder('You guessed it!');
                         this.chat.setEnabled(false);
                     }
                 }
                 break;
 
+            case 'closeHint':
+                this.chat.addSystemMessage('You are close!', 'info');
+                this.sound.play('close');
+                break;
+
             case 'closeGuess':
-                this.chat.addCloseGuessMessage(payload.playerName);
+                // Deprecated: kept for backward compatibility, but ignored to avoid leaking hints publicly.
                 break;
 
             case 'gameStart':
                 this.handleGameStart(payload);
+                this.sound.play('gameStart');
                 break;
 
             case 'wordSelectPhase':
@@ -515,6 +579,7 @@ class SkribblApp {
 
                 const myId = this.isHost ? this.peer.roomCode : this.peer.playerId;
                 if (payload.drawerId === myId && payload.words) {
+                    this.sound.play('wordSelect');
                     this.ui.showWordSelection(payload.words, (word) => {
                         // Store locally so the drawer can see the word immediately.
                         this.game.currentWord = word.toLowerCase();
@@ -538,6 +603,7 @@ class SkribblApp {
             case 'wordSelected':
             case 'drawingStart':
                 this.ui.hideWordSelection();
+                this.sound.play('drawingStart');
                 // Sync turn state if provided.
                 if (payload && typeof payload.currentRound === 'number') this.game.currentRound = payload.currentRound;
                 if (payload && typeof payload.currentDrawerIndex === 'number') this.game.currentDrawerIndex = payload.currentDrawerIndex;
@@ -561,6 +627,7 @@ class SkribblApp {
                 } else {
                     this.ui.updateTimerDisplay(payload.time, payload.maxTime);
                 }
+                this.sound.handleTimerTick(payload.time, payload.state);
                 break;
 
             case 'hintReveal':
@@ -578,6 +645,7 @@ class SkribblApp {
             case 'roundEnd':
                 this.ui.showRoundEnd(payload.word, payload.scores);
                 this.chat.addSystemMessage(`The word was: ${payload.word}`, 'success');
+                this.sound.play('roundEnd');
                 break;
 
             case 'newTurn':
@@ -589,6 +657,7 @@ class SkribblApp {
                 this.ui.showGameEnd(payload.standings);
                 this.canvas.setEnabled(false);
                 this.ui.setToolbarVisible(false);
+                this.sound.play('gameEnd');
                 break;
 
             case 'playAgain':
@@ -610,6 +679,26 @@ class SkribblApp {
                 this.updatePlayerLists();
                 this.updateStartButton();
                 this.chat.addSystemMessage('Game ended by host.', 'default');
+                break;
+
+            case 'systemMessage':
+                if (payload && payload.message) {
+                    this.chat.addSystemMessage(payload.message, payload.level || 'default');
+                    if (payload.event === 'playerJoin') this.sound.play('playerJoin');
+                    if (payload.event === 'playerLeave') this.sound.play('playerLeave');
+                    if (payload.event === 'kick') this.sound.play('kick');
+                }
+                break;
+
+            case 'kicked':
+                {
+                    const reason = (payload && payload.reason) ? payload.reason : 'You were removed by the host.';
+                    this.sound.play('kick');
+                    this.ui.showToast(reason, 'error', 3500);
+                    this.peer.disconnect();
+                    this.game.reset();
+                    this.ui.showScreen('landing');
+                }
                 break;
 
             case 'yourWord':
@@ -647,7 +736,11 @@ class SkribblApp {
                 this.ui.setToolbarVisible(false);
                 this.chat.setEnabled(true);
                 this.chat.setPlaceholder('Chat here...');
-                this.ui.updateWordDisplay('Choosing word...', 'WAIT:');
+                {
+                    const drawer = this.game.getPlayer(drawerId);
+                    const chooser = drawer ? drawer.name : 'Someone';
+                    this.ui.updateWordDisplay(`${chooser} is choosing a word...`, 'WAIT:');
+                }
                 this.ui.updateRoundDisplay(this.game.currentRound, this.game.settings.rounds);
                 this.updatePlayerLists();
                 break;
@@ -887,13 +980,53 @@ class SkribblApp {
         });
     }
 
+    handleKickPlayer(peerId) {
+        if (!this.isHost) return;
+        if (!peerId) return;
+        if (peerId === this.peer.roomCode) return;
+
+        const player = this.game.getPlayer(peerId);
+        if (!player) return;
+
+        const name = player.name;
+        this.kickedPeers.add(peerId);
+
+        this.peer.kickPeer(peerId, 'You were kicked by the host.');
+
+        this.game.removePlayer(peerId);
+        this.updatePlayerLists();
+        this.updateStartButton();
+
+        this.peer.broadcast({
+            type: 'playersUpdate',
+            payload: { players: Array.from(this.game.players.entries()) }
+        });
+        this.peer.broadcast({
+            type: 'systemMessage',
+            payload: { event: 'kick', message: `${name} was kicked by the host.`, level: 'default' }
+        });
+
+        this.chat.addSystemMessage(`${name} was kicked by the host.`, 'default');
+        this.sound.play('kick');
+
+        this.kickedPeers.delete(peerId);
+    }
+
     updatePlayerLists() {
         const players = this.game.getPlayersArray();
 
         if (this.game.state === 'lobby') {
-            this.ui.updateLobbyPlayers(players, this.game.settings.maxPlayers);
+            const myId = this.isHost ? this.peer.roomCode : this.peer.playerId;
+            this.ui.updateLobbyPlayers(players, this.game.settings.maxPlayers, {
+                canKick: this.isHost,
+                selfId: myId
+            });
         } else {
-            this.ui.updateGamePlayers(players, this.game.getCurrentDrawerId());
+            const myId = this.isHost ? this.peer.roomCode : this.peer.playerId;
+            this.ui.updateGamePlayers(players, this.game.getCurrentDrawerId(), {
+                canKick: this.isHost,
+                selfId: myId
+            });
         }
     }
 
@@ -914,6 +1047,7 @@ class SkribblApp {
         if (!this.isHost) return;
 
         this.ui.showScreen('game');
+        this.sound.play('gameStart');
         // Resize canvas after screen is visible
         setTimeout(() => {
             this.canvas.resizeCanvas();

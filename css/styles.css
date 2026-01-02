@@ -159,6 +159,14 @@ body {
     font-size: 0.85rem;
 }
 
+.sound-toggle-btn {
+    min-width: 44px;
+    padding: 8px 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .btn-icon {
     font-size: 1.2em;
 }
@@ -543,6 +551,37 @@ body {
 
 #lobby-player-list .player-crown {
     font-size: 1.1rem;
+}
+
+.kick-btn {
+    margin-left: 6px;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    line-height: 1;
+    transition: all var(--transition-fast);
+}
+
+.kick-btn:hover {
+    background: rgba(231, 76, 60, 0.18);
+    border-color: rgba(231, 76, 60, 0.35);
+}
+
+.kick-btn:active {
+    transform: scale(0.96);
+}
+
+.kick-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .lobby-settings {
@@ -1302,6 +1341,201 @@ body {
     
     .tool-divider {
         display: none;
+    }
+}
+
+/* Mobile layout: canvas on top, players/chat split below */
+@media (max-width: 700px) {
+    /* Game screen becomes a 2-row grid:
+       Row 1: main (header + canvas + toolbar)
+       Row 2: players + chat, 50/50 */
+    .game-container {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto minmax(0, 1fr);
+        grid-template-areas:
+            "main main"
+            "players chat";
+        height: 100vh;
+        max-height: 100vh;
+    }
+
+    .game-main {
+        grid-area: main;
+        min-height: 0;
+    }
+
+    /* Force the canvas to take ~half the screen height */
+    .canvas-container {
+        flex: none;
+        height: 50vh;
+        min-height: 240px;
+    }
+
+    .players-sidebar {
+        grid-area: players;
+        position: relative;
+        inset: auto;
+        left: auto;
+        right: auto;
+        top: auto;
+        bottom: auto;
+        width: auto;
+        z-index: auto;
+        border-radius: var(--radius-lg);
+        transition: none;
+        min-height: 0;
+        height: 100%;
+    }
+
+    .chat-sidebar {
+        grid-area: chat;
+        position: relative;
+        inset: auto;
+        left: auto;
+        right: auto;
+        top: auto;
+        bottom: auto;
+        width: auto;
+        z-index: auto;
+        border-radius: var(--radius-lg);
+        transition: none;
+        min-height: 0;
+        height: 100%;
+    }
+
+    .players-sidebar.open,
+    .chat-sidebar.open {
+        left: auto;
+        right: auto;
+    }
+
+    .mobile-only {
+        display: none;
+    }
+
+    .sidebar-overlay {
+        display: none !important;
+    }
+
+    /* Lobby: keep buttons inside viewport */
+    #lobby-screen {
+        align-items: flex-start;
+        overflow-y: auto;
+        padding-bottom: 90px;
+    }
+
+    .lobby-actions {
+        flex-direction: column;
+    }
+
+    .lobby-actions .btn {
+        width: 100%;
+    }
+
+    /* Player lists: mobile-friendly (no avatars) */
+    #lobby-player-list {
+        grid-template-columns: 1fr;
+    }
+
+    #lobby-player-list li {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        grid-template-rows: auto auto;
+        column-gap: 10px;
+        row-gap: 6px;
+        align-items: center;
+        padding: 10px 12px;
+    }
+
+    #lobby-player-list .player-name {
+        grid-column: 1 / -1;
+        grid-row: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #lobby-player-list .player-avatar {
+        grid-column: 1;
+        grid-row: 2;
+        width: 28px;
+        height: 28px;
+        font-size: 0.75rem;
+    }
+
+    #lobby-player-list .player-crown {
+        grid-column: 2;
+        grid-row: 2;
+        justify-self: start;
+    }
+
+    #lobby-player-list .kick-btn {
+        grid-column: 3;
+        grid-row: 2;
+        justify-self: end;
+        margin-left: 0;
+    }
+
+    #game-player-list li {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto;
+        column-gap: 10px;
+        row-gap: 6px;
+        align-items: center;
+        padding: 10px 12px;
+    }
+
+    #game-player-list .player-rank {
+        display: none;
+    }
+
+    #game-player-list .player-info {
+        display: contents;
+    }
+
+    #game-player-list .player-name {
+        grid-column: 1;
+        grid-row: 1;
+        font-size: 0.9rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #game-player-list .player-avatar {
+        display: none;
+    }
+
+    #game-player-list .player-score {
+        grid-column: 1;
+        grid-row: 2;
+        font-size: 0.75rem;
+    }
+
+    #game-player-list .player-icons {
+        grid-column: 1;
+        grid-row: 3;
+        justify-self: start;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+        max-width: 100%;
+        justify-content: flex-start;
+    }
+
+    /* Keep the row clean: show only the kick button on mobile; status is still visible via row styling. */
+    #game-player-list .player-icons span {
+        display: none;
+    }
+
+    #game-player-list .player-icons:empty {
+        display: none;
+    }
+
+    #game-player-list .kick-btn {
+        margin-left: 0;
     }
 }
 
