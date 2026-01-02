@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Skribbl Clone - Draw & Guess Game</title>
+    <meta name="description" content="A fun multiplayer drawing and guessing game. Create or join a room and play with friends!">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Landing Screen -->
+    <div id="landing-screen" class="screen active">
+        <div class="landing-container">
+            <div class="logo-section">
+                <h1 class="logo">✏️ Skribbl</h1>
+                <p class="tagline">Draw, Guess & Have Fun!</p>
+            </div>
+            
+            <div class="name-input-section glass-card">
+                <label for="player-name">Enter Your Name</label>
+                <input type="text" id="player-name" placeholder="Your nickname..." maxlength="20" autocomplete="off">
+            </div>
+            
+            <div class="action-buttons">
+                <button id="create-room-btn" class="btn btn-primary btn-large">
+                    <span class="btn-icon">🎨</span>
+                    Create Room
+                </button>
+                <button id="join-room-btn" class="btn btn-secondary btn-large">
+                    <span class="btn-icon">🚪</span>
+                    Join Room
+                </button>
+            </div>
+            
+            <div id="join-input-section" class="join-section hidden">
+                <input type="text" id="room-code-input" placeholder="Enter room code..." maxlength="6" autocomplete="off">
+                <button id="join-confirm-btn" class="btn btn-success">Join</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Room Settings Modal -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content glass-card">
+            <h2>Room Settings</h2>
+            
+            <div class="settings-grid">
+                <div class="setting-item">
+                    <label for="setting-players">Players</label>
+                    <select id="setting-players">
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8" selected>8</option>
+                    </select>
+                </div>
+                
+                <div class="setting-item">
+                    <label for="setting-language">Language</label>
+                    <select id="setting-language">
+                        <option value="english" selected>English</option>
+                        <option value="spanish">Spanish</option>
+                        <option value="french">French</option>
+                        <option value="german">German</option>
+                    </select>
+                </div>
+                
+                <div class="setting-item">
+                    <label for="setting-drawtime">Draw Time</label>
+                    <select id="setting-drawtime">
+                        <option value="30">30 seconds</option>
+                        <option value="60">60 seconds</option>
+                        <option value="80" selected>80 seconds</option>
+                        <option value="120">120 seconds</option>
+                    </select>
+                </div>
+                
+                <div class="setting-item">
+                    <label for="setting-rounds">Rounds</label>
+                    <select id="setting-rounds">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3" selected>3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                        <option value="9">9</option>
+                        <option value="10">10</option>
+                    </select>
+                </div>
+                
+                <div class="setting-item">
+                    <label for="setting-wordcount">Word Count</label>
+                    <select id="setting-wordcount">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3" selected>3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                    </select>
+                </div>
+                
+                <div class="setting-item">
+                    <label for="setting-hints">Hints</label>
+                    <select id="setting-hints">
+                        <option value="0">0</option>
+                        <option value="1">1</option>
+                        <option value="2" selected>2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="custom-words-section">
+                <label for="custom-words">Custom Words</label>
+                <textarea id="custom-words" placeholder="Enter custom words separated by commas (minimum 10 words)..."></textarea>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="custom-words-only">
+                    <label for="custom-words-only">Use custom words only</label>
+                </div>
+            </div>
+            
+            <div class="modal-actions">
+                <button id="cancel-settings-btn" class="btn btn-secondary">Cancel</button>
+                <button id="confirm-settings-btn" class="btn btn-primary">Create Room</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lobby Screen -->
+    <div id="lobby-screen" class="screen hidden">
+        <div class="lobby-container">
+            <div class="lobby-header glass-card">
+                <h2>Game Lobby</h2>
+                <div class="room-code-display">
+                    <span>Room Code:</span>
+                    <strong id="lobby-room-code">XXXXXX</strong>
+                    <button id="copy-code-btn" class="btn btn-small btn-secondary" title="Copy to clipboard">📋</button>
+                </div>
+            </div>
+            
+            <div class="lobby-players glass-card">
+                <h3>Players <span id="player-count">(0/8)</span></h3>
+                <ul id="lobby-player-list"></ul>
+            </div>
+            
+            <div class="lobby-settings glass-card">
+                <h3>Game Settings</h3>
+                <div id="lobby-settings-display"></div>
+            </div>
+            
+            <div class="lobby-actions">
+                <button id="invite-btn" class="btn btn-secondary btn-large">
+                    <span class="btn-icon">🔗</span>
+                    Invite
+                </button>
+                <button id="start-game-btn" class="btn btn-success btn-large" disabled>
+                    <span class="btn-icon">🎮</span>
+                    Start Game
+                </button>
+            </div>
+            
+            <div id="lobby-message" class="lobby-message"></div>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen hidden">
+        <div class="game-container">
+            <!-- Players Sidebar -->
+            <aside class="players-sidebar glass-card">
+                <div class="sidebar-header">
+                    <h3>Players</h3>
+                    <button id="toggle-players" class="btn-toggle mobile-only">👥</button>
+                </div>
+                <ul id="game-player-list"></ul>
+            </aside>
+            
+            <!-- Main Game Area -->
+            <main class="game-main">
+                <!-- Game Header -->
+                <div class="game-header glass-card">
+                    <div class="round-info">
+                        <span id="round-display">Round 1 of 3</span>
+                    </div>
+                    <div class="timer-container">
+                        <div id="timer-bar" class="timer-bar"></div>
+                        <span id="timer-display">80</span>
+                    </div>
+                    <div class="word-display">
+                        <span id="word-label">GUESS THIS:</span>
+                        <span id="word-text">_ _ _ _ _</span>
+                    </div>
+                </div>
+                
+                <!-- Canvas Area -->
+                <div class="canvas-container">
+                    <canvas id="drawing-canvas"></canvas>
+                    
+                    <!-- Word Selection Overlay -->
+                    <div id="word-selection" class="overlay hidden">
+                        <div class="overlay-content glass-card">
+                            <h3>Choose a word to draw!</h3>
+                            <div class="word-timer">
+                                <span id="word-timer-display">15</span>
+                            </div>
+                            <div id="word-options" class="word-options"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Round End Overlay -->
+                    <div id="round-end" class="overlay hidden">
+                        <div class="overlay-content glass-card">
+                            <h3 id="round-end-title">Round Over!</h3>
+                            <p id="round-end-word">The word was: <strong></strong></p>
+                            <div id="round-scores" class="round-scores"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Game End Overlay -->
+                    <div id="game-end" class="overlay hidden">
+                        <div class="overlay-content glass-card">
+                            <h2>🏆 Game Over!</h2>
+                            <div id="final-standings" class="final-standings"></div>
+                            <button id="play-again-btn" class="btn btn-primary btn-large">Play Again</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Drawing Toolbar -->
+                <div id="drawing-toolbar" class="drawing-toolbar glass-card hidden">
+                    <div class="color-palette">
+                        <button class="color-btn active" data-color="#000000" style="background:#000000"></button>
+                        <button class="color-btn" data-color="#FFFFFF" style="background:#FFFFFF"></button>
+                        <button class="color-btn" data-color="#C1C1C1" style="background:#C1C1C1"></button>
+                        <button class="color-btn" data-color="#EF130B" style="background:#EF130B"></button>
+                        <button class="color-btn" data-color="#FF7100" style="background:#FF7100"></button>
+                        <button class="color-btn" data-color="#FFE400" style="background:#FFE400"></button>
+                        <button class="color-btn" data-color="#00CC00" style="background:#00CC00"></button>
+                        <button class="color-btn" data-color="#00B2FF" style="background:#00B2FF"></button>
+                        <button class="color-btn" data-color="#231FD3" style="background:#231FD3"></button>
+                        <button class="color-btn" data-color="#A300BA" style="background:#A300BA"></button>
+                        <button class="color-btn" data-color="#D37CAA" style="background:#D37CAA"></button>
+                        <button class="color-btn" data-color="#A0522D" style="background:#A0522D"></button>
+                    </div>
+                    
+                    <div class="tool-divider"></div>
+                    
+                    <div class="brush-sizes">
+                        <button class="size-btn" data-size="4"><span style="width:8px;height:8px"></span></button>
+                        <button class="size-btn active" data-size="8"><span style="width:12px;height:12px"></span></button>
+                        <button class="size-btn" data-size="16"><span style="width:18px;height:18px"></span></button>
+                        <button class="size-btn" data-size="32"><span style="width:26px;height:26px"></span></button>
+                    </div>
+                    
+                    <div class="tool-divider"></div>
+                    
+                    <div class="tools">
+                        <button id="pencil-tool" class="tool-btn active" title="Pencil">✏️</button>
+                        <button id="eraser-tool" class="tool-btn" title="Eraser">🧹</button>
+                        <button id="fill-tool" class="tool-btn" title="Fill">🪣</button>
+                    </div>
+                    
+                    <div class="tool-divider"></div>
+                    
+                    <div class="actions">
+                        <button id="undo-btn" class="action-btn" title="Undo">↩️</button>
+                        <button id="clear-btn" class="action-btn" title="Clear">🗑️</button>
+                    </div>
+                </div>
+            </main>
+            
+            <!-- Chat Sidebar -->
+            <aside class="chat-sidebar glass-card">
+                <div class="sidebar-header">
+                    <h3>Chat</h3>
+                    <button id="toggle-chat" class="btn-toggle mobile-only">💬</button>
+                </div>
+                <div id="chat-messages" class="chat-messages"></div>
+                <div class="chat-input-container">
+                    <input type="text" id="chat-input" placeholder="Type your guess here..." maxlength="100" autocomplete="off">
+                    <button id="send-chat-btn" class="btn btn-primary">Send</button>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="js/app.js" type="module"></script>
+</body>
+</html>

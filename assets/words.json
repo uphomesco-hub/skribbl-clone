@@ -1,0 +1,78 @@
+{
+    "english": {
+        "easy": [
+            "apple", "ball", "cat", "dog", "egg", "fish", "tree", "sun", "moon", "star",
+            "house", "car", "book", "bird", "flower", "rain", "snow", "cloud", "heart", "smile",
+            "hand", "eye", "nose", "ear", "mouth", "foot", "hat", "shoe", "shirt", "pants",
+            "cup", "plate", "spoon", "fork", "knife", "door", "window", "chair", "table", "bed",
+            "lamp", "clock", "phone", "key", "bag", "box", "pen", "paper", "coin", "ring"
+        ],
+        "medium": [
+            "airplane", "bicycle", "butterfly", "camera", "candle", "castle", "chicken", "chocolate",
+            "computer", "diamond", "dolphin", "dragon", "elephant", "fireworks", "fountain", "giraffe",
+            "glasses", "guitar", "hamburger", "helicopter", "iceberg", "island", "jellyfish", "kangaroo",
+            "keyboard", "ladder", "lighthouse", "magnet", "mermaid", "microphone", "mountain", "mushroom",
+            "necklace", "octopus", "painting", "parachute", "penguin", "piano", "pillow", "pineapple",
+            "popcorn", "pyramid", "rainbow", "refrigerator", "robot", "rocket", "sandwich", "scarecrow",
+            "scissors", "skateboard", "snowflake", "snowman", "spaceship", "spider", "starfish", "strawberry",
+            "submarine", "sunflower", "telescope", "television", "tornado", "treasure", "trophy", "turtle",
+            "umbrella", "unicorn", "vampire", "volcano", "waterfall", "watermelon", "windmill", "wizard"
+        ],
+        "hard": [
+            "anniversary", "astronaut", "atmosphere", "avalanche", "ballerina", "basketball", "blizzard",
+            "boomerang", "brainwash", "breakfast", "bungalow", "caffeine", "calculator", "camouflage",
+            "cheerleader", "chemistry", "civilization", "claustrophobia", "coincidence", "constellation",
+            "controversy", "crocodile", "democracy", "disguise", "earthquake", "ecosystem", "electricity",
+            "emergency", "encyclopedia", "experiment", "explosion", "firefighter", "flashlight", "gymnastics",
+            "handkerchief", "harmonica", "hippopotamus", "honeymoon", "horizontal", "hypnotize", "imagination",
+            "immigration", "independence", "ingredient", "inspiration", "journalism", "kaleidoscope", "laboratory",
+            "limousine", "marshmallow", "meditation", "microwave", "millionaire", "mysterious", "nightmare",
+            "observatory", "orchestra", "parallel", "photograph", "planetarium", "quarantine", "quicksand",
+            "revolution", "rhinoceros", "rollercoaster", "shipwreck", "skyscraper", "sleepwalk", "stereotype",
+            "stethoscope", "sunglasses", "superstition", "synchronize", "thermometer", "thunderstorm", "trampoline",
+            "transparent", "treadmill", "triceratops", "underground", "vegetarian", "veterinarian", "wheelchair"
+        ]
+    },
+    "spanish": {
+        "easy": [
+            "casa", "perro", "gato", "sol", "luna", "agua", "pan", "mesa", "silla", "cama",
+            "libro", "flor", "arbol", "mano", "pie", "ojo", "boca", "pelo", "playa", "mar"
+        ],
+        "medium": [
+            "mariposa", "elefante", "montaña", "guitarra", "cocina", "ventana", "estrella", "corazon",
+            "paraguas", "bicicleta", "telefono", "computadora", "chocolate", "helado", "dinosaurio"
+        ],
+        "hard": [
+            "murciélago", "arquitectura", "electricidad", "naturaleza", "universo", "democracia",
+            "civilización", "imaginación", "extraordinario", "refrigerador"
+        ]
+    },
+    "french": {
+        "easy": [
+            "maison", "chat", "chien", "soleil", "lune", "eau", "pain", "table", "chaise", "lit",
+            "livre", "fleur", "arbre", "main", "pied", "oeil", "bouche", "plage", "mer", "ciel"
+        ],
+        "medium": [
+            "papillon", "elephant", "montagne", "guitare", "cuisine", "fenetre", "etoile", "coeur",
+            "parapluie", "velo", "telephone", "ordinateur", "chocolat", "glace", "dinosaure"
+        ],
+        "hard": [
+            "chauve-souris", "architecture", "electricite", "nature", "univers", "democratie",
+            "civilisation", "imagination", "extraordinaire", "refrigerateur"
+        ]
+    },
+    "german": {
+        "easy": [
+            "haus", "hund", "katze", "sonne", "mond", "wasser", "brot", "tisch", "stuhl", "bett",
+            "buch", "blume", "baum", "hand", "fuss", "auge", "mund", "strand", "meer", "himmel"
+        ],
+        "medium": [
+            "schmetterling", "elefant", "berg", "gitarre", "küche", "fenster", "stern", "herz",
+            "regenschirm", "fahrrad", "telefon", "computer", "schokolade", "eis", "dinosaurier"
+        ],
+        "hard": [
+            "fledermaus", "architektur", "elektrizität", "natur", "universum", "demokratie",
+            "zivilisation", "phantasie", "außergewöhnlich", "kühlschrank"
+        ]
+    }
+}
