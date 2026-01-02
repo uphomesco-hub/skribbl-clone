@@ -306,17 +306,21 @@ class UIManager {
             document.getElementById('game-screen').appendChild(overlay);
         }
 
-        playersBtn?.addEventListener('click', () => {
-            playersSidebar.classList.toggle('open');
-            chatSidebar.classList.remove('open');
-            overlay.classList.toggle('active', playersSidebar.classList.contains('open'));
-        });
+        if (playersBtn) {
+            playersBtn.addEventListener('click', () => {
+                playersSidebar.classList.toggle('open');
+                chatSidebar.classList.remove('open');
+                overlay.classList.toggle('active', playersSidebar.classList.contains('open'));
+            });
+        }
 
-        chatBtn?.addEventListener('click', () => {
-            chatSidebar.classList.toggle('open');
-            playersSidebar.classList.remove('open');
-            overlay.classList.toggle('active', chatSidebar.classList.contains('open'));
-        });
+        if (chatBtn) {
+            chatBtn.addEventListener('click', () => {
+                chatSidebar.classList.toggle('open');
+                playersSidebar.classList.remove('open');
+                overlay.classList.toggle('active', chatSidebar.classList.contains('open'));
+            });
+        }
 
         overlay.addEventListener('click', () => {
             playersSidebar.classList.remove('open');

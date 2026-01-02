@@ -400,11 +400,14 @@ class GameManager {
 
         const roundData = {
             word: this.currentWord,
-            scores: Array.from(this.roundScores.entries()).map(([id, score]) => ({
-                id,
-                name: this.players.get(id)?.name || 'Unknown',
-                score
-            }))
+            scores: Array.from(this.roundScores.entries()).map(([id, score]) => {
+                const player = this.players.get(id);
+                return {
+                    id,
+                    name: (player && player.name) || 'Unknown',
+                    score
+                };
+            })
         };
 
         if (this.onRoundEnd) {

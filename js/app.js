@@ -82,10 +82,10 @@ class SkribblApp {
 
                 const etag = res.headers.get('etag');
                 if (etag) {
-                    setText(etag.replace(/W\\//, '').replace(/\"/g, ''));
+                    setText(etag.replace(/W\//, '').replace(/\"/g, ''));
                 }
             })
-            .catch(() => {});
+            .catch(() => { });
     }
 
     setupEventListeners() {
@@ -566,7 +566,7 @@ class SkribblApp {
                 break;
 
             case 'yourWord':
-                if (payload?.word) {
+                if (payload && payload.word) {
                     this.game.currentWord = payload.word.toLowerCase();
                     const myId = this.isHost ? this.peer.roomCode : this.peer.playerId;
                     if (this.game.state === 'drawing' && this.game.getCurrentDrawerId() === myId) {
