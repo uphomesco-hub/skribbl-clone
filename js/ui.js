@@ -296,6 +296,13 @@ class UIManager {
         const countEl = document.getElementById('word-count');
         if (!countEl) return;
 
+        const labelLower = String(label || '').toLowerCase();
+        const textLower = String(text || '').toLowerCase();
+        if (labelLower.indexOf('wait') !== -1 || textLower.indexOf('choosing') !== -1) {
+            countEl.classList.add('hidden');
+            return;
+        }
+
         const count = this.countMaskedWordLength(text);
         if (count > 0) {
             countEl.textContent = `(${count})`;

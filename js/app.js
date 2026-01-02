@@ -18,6 +18,7 @@ class SkribblApp {
         this.playerName = '';
         this.isHost = false;
         this.publicWordDisplay = '';
+        this.isEditingSettings = false;
 
         this.init();
     }
@@ -107,6 +108,7 @@ class SkribblApp {
         document.getElementById('copy-code-btn').addEventListener('click', () => this.copyRoomCode());
         document.getElementById('invite-btn').addEventListener('click', () => this.copyInviteLink());
         document.getElementById('start-game-btn').addEventListener('click', () => this.handleStartGame());
+        document.getElementById('edit-settings-btn').addEventListener('click', () => this.openEditSettings());
 
         // Host controls
         document.getElementById('end-game-btn').addEventListener('click', () => this.handleEndGame());
@@ -435,6 +437,16 @@ class SkribblApp {
                 this.updatePlayerLists();
                 break;
 
+            case 'settingsUpdate':
+                if (payload && payload.settings) {
+                    this.game.setSettings(payload.settings);
+                    if (this.game.state === 'lobby') {
+                        this.ui.updateLobbySettings(this.game.settings);
+                    }
+                    this.updateStartButton();
+                }
+                break;
+
             case 'draw':
                 this.canvas.applyDrawData(payload);
                 if (this.isHost) {
@@ -684,6 +696,11 @@ class SkribblApp {
         this.playerName = this.getPlayerName();
         if (!this.playerName) return;
 
+        // Reset modal state for room creation
+        this.isEditingSettings = false;
+        const confirmBtn = document.getElementById('confirm-settings-btn');
+        if (confirmBtn) confirmBtn.textContent = 'Create Room';
+
         this.ui.showModal('settings');
     }
 
@@ -732,6 +749,7 @@ class SkribblApp {
 
             // Hide start button for non-hosts
             document.getElementById('start-game-btn').style.display = 'none';
+            document.getElementById('edit-settings-btn').classList.add('hidden');
 
         } catch (error) {
             this.ui.showToast('Could not join room: ' + error.message, 'error');
@@ -767,6 +785,21 @@ class SkribblApp {
 
         this.game.setSettings(settings);
 
+        // Editing settings in lobby (host only)
+        if (this.isEditingSettings && this.isHost) {
+            this.isEditingSettings = false;
+            this.ui.hideModal('settings');
+            this.ui.updateLobbySettings(settings);
+            this.updateStartButton();
+
+            this.peer.broadcast({
+                type: 'settingsUpdate',
+                payload: { settings }
+            });
+            this.chat.addSystemMessage('Game settings updated.', 'default');
+            return;
+        }
+
         try {
             await this.peer.createRoom();
             this.isHost = true;
@@ -777,6 +810,7 @@ class SkribblApp {
             // Update UI
             document.getElementById('lobby-room-code').textContent = this.peer.roomCode;
             this.ui.updateLobbySettings(settings);
+            document.getElementById('edit-settings-btn').classList.remove('hidden');
             this.updatePlayerLists();
 
             // Update URL
@@ -791,6 +825,26 @@ class SkribblApp {
         } catch (error) {
             this.ui.showToast('Could not create room: ' + error.message, 'error');
         }
+    }
+
+    openEditSettings() {
+        if (!this.isHost) return;
+        if (this.game.state !== 'lobby') return;
+
+        const settings = this.game.settings;
+        document.getElementById('setting-players').value = String(settings.maxPlayers);
+        document.getElementById('setting-language').value = settings.language;
+        document.getElementById('setting-drawtime').value = String(settings.drawTime);
+        document.getElementById('setting-rounds').value = String(settings.rounds);
+        document.getElementById('setting-wordcount').value = String(settings.wordCount);
+        document.getElementById('setting-hints').value = String(settings.hints);
+        document.getElementById('custom-words').value = (settings.customWords || []).join(', ');
+        document.getElementById('custom-words-only').checked = !!settings.customWordsOnly;
+
+        this.isEditingSettings = true;
+        const confirmBtn = document.getElementById('confirm-settings-btn');
+        if (confirmBtn) confirmBtn.textContent = 'Save Settings';
+        this.ui.showModal('settings');
     }
 
     copyRoomCode() {

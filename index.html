@@ -165,6 +165,10 @@
                     <span class="btn-icon">🔗</span>
                     Invite
                 </button>
+                <button id="edit-settings-btn" class="btn btn-secondary btn-large hidden">
+                    <span class="btn-icon">⚙️</span>
+                    Settings
+                </button>
                 <button id="start-game-btn" class="btn btn-success btn-large" disabled>
                     <span class="btn-icon">🎮</span>
                     Start Game
@@ -293,6 +297,7 @@
                 </div>
                 <div id="chat-messages" class="chat-messages"></div>
                 <div class="chat-input-container">
+                    <span id="chat-char-count" class="chat-char-count">0</span>
                     <input type="text" id="chat-input" placeholder="Type your guess here..." maxlength="100" autocomplete="off">
                     <button id="send-chat-btn" class="btn btn-primary">Send</button>
                 </div>

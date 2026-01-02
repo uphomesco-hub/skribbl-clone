@@ -6,6 +6,7 @@ class ChatManager {
         this.container = document.getElementById(containerId);
         this.input = document.getElementById(inputId);
         this.sendBtn = document.getElementById(sendBtnId);
+        this.charCountEl = document.getElementById('chat-char-count');
 
         this.onSendMessage = null;
         this.isEnabled = true;
@@ -15,11 +16,13 @@ class ChatManager {
 
     init() {
         this.sendBtn.addEventListener('click', () => this.handleSend());
+        this.input.addEventListener('input', () => this.updateCharCount());
         this.input.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 this.handleSend();
             }
         });
+        this.updateCharCount();
     }
 
     handleSend() {
@@ -33,6 +36,13 @@ class ChatManager {
         }
 
         this.input.value = '';
+        this.updateCharCount();
+    }
+
+    updateCharCount() {
+        if (!this.charCountEl) return;
+        const len = (this.input && this.input.value) ? this.input.value.length : 0;
+        this.charCountEl.textContent = String(len);
     }
 
     // Add a system message
@@ -99,6 +109,7 @@ class ChatManager {
         this.input.disabled = !enabled;
         this.sendBtn.disabled = !enabled;
         this.input.placeholder = enabled ? 'Type your guess here...' : 'Waiting...';
+        this.updateCharCount();
     }
 
     // Set input placeholder

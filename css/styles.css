@@ -1133,18 +1133,31 @@ body {
     display: flex;
     gap: 8px;
     align-items: stretch;
+    position: relative;
 }
 
 #chat-input {
     flex: 1;
     min-width: 0;
-    padding: 12px 15px;
+    padding: 12px 15px 12px 44px;
     font-size: 0.9rem;
     font-family: var(--font-family);
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-sm);
     color: var(--text-primary);
+}
+
+.chat-char-count {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    pointer-events: none;
+    user-select: none;
 }
 
 #send-chat-btn {
