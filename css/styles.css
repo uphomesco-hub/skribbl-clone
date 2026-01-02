@@ -594,15 +594,22 @@ body {
 #game-screen {
     padding: 10px;
     height: 100vh;
+    width: 100%;
+}
+
+/* Override generic `.screen.active { display:flex }` so the game grid can span full width */
+#game-screen.active {
+    display: block;
 }
 
 .game-container {
     display: grid;
-    grid-template-columns: 200px 1fr 280px;
+    grid-template-columns: clamp(150px, 16vw, 200px) minmax(0, 1fr) clamp(220px, 22vw, 280px);
     gap: 10px;
     height: 100%;
     max-height: 100vh;
     overflow: hidden;
+    width: 100%;
 }
 
 /* Players Sidebar */
@@ -702,6 +709,7 @@ body {
     gap: 10px;
     min-height: 0;
     position: relative;
+    min-width: 0;
 }
 
 .game-header {
@@ -757,6 +765,14 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+.word-count {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    min-width: 48px;
+    text-align: right;
 }
 
 #word-label {
@@ -919,11 +935,6 @@ body {
     gap: 10px;
     padding: 12px 20px;
     flex-wrap: wrap;
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 5;
 }
 
 .color-palette {
@@ -952,6 +963,11 @@ body {
 
 .color-btn[data-color="#FFFFFF"] {
     border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.color-btn.active[data-color="#FFFFFF"] {
+    border-color: rgba(0, 0, 0, 0.6);
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.25);
 }
 
 .tool-divider {

@@ -190,19 +190,23 @@
             <!-- Main Game Area -->
             <main class="game-main">
                 <!-- Game Header -->
-                <div class="game-header glass-card">
-                    <div class="round-info">
-                        <span id="round-display">Round 1 of 3</span>
-                    </div>
-                    <div class="timer-container">
-                        <div id="timer-bar" class="timer-bar"></div>
-                        <span id="timer-display">80</span>
-                    </div>
-                    <div class="word-display">
-                        <span id="word-label">GUESS THIS:</span>
-                        <span id="word-text">_ _ _ _ _</span>
-                    </div>
-                </div>
+	                <div class="game-header glass-card">
+	                    <div class="round-info">
+	                        <span id="round-display">Round 1 of 3</span>
+	                    </div>
+	                    <button id="end-game-btn" class="btn btn-secondary btn-small hidden" title="End game and return to lobby">
+	                        End Game
+	                    </button>
+	                    <div class="timer-container">
+	                        <div id="timer-bar" class="timer-bar"></div>
+	                        <span id="timer-display">80</span>
+	                    </div>
+	                    <div class="word-display">
+	                        <span id="word-label">GUESS THIS:</span>
+	                        <span id="word-count" class="word-count hidden">(0)</span>
+	                        <span id="word-text">_ _ _ _ _</span>
+	                    </div>
+	                </div>
                 
                 <!-- Canvas Area -->
                 <div class="canvas-container">

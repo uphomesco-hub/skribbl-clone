@@ -265,6 +265,34 @@ class UIManager {
     updateWordDisplay(text, label = 'GUESS THIS:') {
         document.getElementById('word-label').textContent = label;
         document.getElementById('word-text').textContent = text;
+
+        const countEl = document.getElementById('word-count');
+        if (!countEl) return;
+
+        const count = this.countMaskedWordLength(text);
+        if (count > 0) {
+            countEl.textContent = `(${count})`;
+            countEl.classList.remove('hidden');
+        } else {
+            countEl.classList.add('hidden');
+        }
+    }
+
+    countMaskedWordLength(text) {
+        if (!text) return 0;
+        // Accept formats like "_ _ _", "A _ _", "CAT", "C A T"
+        const chars = String(text).replace(/\s/g, '');
+        if (!chars) return 0;
+
+        let count = 0;
+        for (let i = 0; i < chars.length; i++) {
+            const c = chars[i];
+            if (c === '_' || /[a-zA-Z0-9]/.test(c)) count++;
+        }
+
+        // Ignore non-word states (e.g., "Choosing word...")
+        if (count > 0 && (chars.indexOf('_') !== -1 || /[A-Z0-9]/.test(chars))) return count;
+        return 0;
     }
 
     // Show/hide drawing toolbar

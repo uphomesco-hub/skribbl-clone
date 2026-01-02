@@ -108,6 +108,9 @@ class SkribblApp {
         document.getElementById('invite-btn').addEventListener('click', () => this.copyInviteLink());
         document.getElementById('start-game-btn').addEventListener('click', () => this.handleStartGame());
 
+        // Host controls
+        document.getElementById('end-game-btn').addEventListener('click', () => this.handleEndGame());
+
         // Game - Drawing tools
         this.setupDrawingTools();
 
@@ -421,6 +424,10 @@ class SkribblApp {
             case 'gameState':
                 this.game.applyGameState(payload);
                 this.updatePlayerLists();
+                if (this.game.state === 'lobby') {
+                    this.ui.updateLobbySettings(this.game.settings);
+                    this.ui.showScreen('lobby');
+                }
                 break;
 
             case 'playersUpdate':
@@ -562,7 +569,21 @@ class SkribblApp {
                 this.ui.hideGameEnd();
                 this.canvas.clear(false);
                 this.game.reset();
-                this.ui.showScreen('game');
+                this.ui.showScreen('lobby');
+                this.ui.updateLobbySettings(this.game.settings);
+                this.updatePlayerLists();
+                this.updateStartButton();
+                break;
+
+            case 'terminateGame':
+                this.ui.hideGameEnd();
+                this.canvas.clear(false);
+                this.game.reset();
+                this.ui.showScreen('lobby');
+                this.ui.updateLobbySettings(this.game.settings);
+                this.updatePlayerLists();
+                this.updateStartButton();
+                this.chat.addSystemMessage('Game ended by host.', 'default');
                 break;
 
             case 'yourWord':
@@ -584,6 +605,12 @@ class SkribblApp {
         const drawerId = this.game.getCurrentDrawerId();
         const myId = this.isHost ? this.peer.roomCode : this.peer.playerId;
         const isDrawer = myId === drawerId;
+
+        const endBtn = document.getElementById('end-game-btn');
+        if (endBtn) {
+            const show = this.isHost && state !== 'lobby';
+            endBtn.classList.toggle('hidden', !show);
+        }
 
         switch (state) {
             case 'wordSelect':
@@ -675,6 +702,10 @@ class SkribblApp {
             return;
         }
 
+        const joinBtn = document.getElementById('join-confirm-btn');
+        if (joinBtn) joinBtn.disabled = true;
+        this.ui.showToast('Connecting to room...', 'default', 2000);
+
         try {
             await this.peer.joinRoom(roomCode);
             this.isHost = false;
@@ -701,6 +732,8 @@ class SkribblApp {
 
         } catch (error) {
             this.ui.showToast('Could not join room: ' + error.message, 'error');
+        } finally {
+            if (joinBtn) joinBtn.disabled = false;
         }
     }
 
@@ -840,6 +873,25 @@ class SkribblApp {
         this.ui.showScreen('lobby');
         this.updatePlayerLists();
         this.updateStartButton();
+    }
+
+    handleEndGame() {
+        if (!this.isHost) return;
+
+        this.ui.hideGameEnd();
+        this.canvas.clear(false);
+        this.game.reset();
+
+        this.peer.broadcast({
+            type: 'terminateGame',
+            payload: {}
+        });
+
+        this.ui.showScreen('lobby');
+        this.ui.updateLobbySettings(this.game.settings);
+        this.updatePlayerLists();
+        this.updateStartButton();
+        this.chat.addSystemMessage('Game ended by host.', 'default');
     }
 }
 
