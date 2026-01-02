@@ -9,12 +9,22 @@ class PeerManager {
         this.roomCode = null;
         this.playerId = null;
         this.hostConnection = null;
-        
+
         this.onPlayerJoin = null;
         this.onPlayerLeave = null;
         this.onMessage = null;
         this.onConnectionError = null;
         this.onConnected = null;
+
+        // ICE servers for NAT traversal
+        this.iceServers = [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+            { urls: 'stun:global.stun.twilio.com:3478' }
+        ];
     }
 
     // Generate a random 6-character room code
@@ -33,23 +43,33 @@ class PeerManager {
             this.roomCode = this.generateRoomCode();
             this.isHost = true;
             this.playerId = this.roomCode;
-            
+
             this.peer = new Peer(this.roomCode, {
-                debug: 1
+                debug: 2,
+                config: {
+                    iceServers: this.iceServers
+                }
             });
-            
+
             this.peer.on('open', (id) => {
                 console.log('Room created with code:', id);
                 this.setupHostListeners();
                 resolve(this.roomCode);
             });
-            
+
             this.peer.on('error', (err) => {
                 console.error('Peer error:', err);
                 if (err.type === 'unavailable-id') {
-                    // Room code taken, try again
+                    // Room code taken, try again with new code
+                    this.peer.destroy();
                     this.roomCode = this.generateRoomCode();
-                    this.peer.reconnect();
+                    this.playerId = this.roomCode;
+                    this.peer = new Peer(this.roomCode, {
+                        debug: 2,
+                        config: {
+                            iceServers: this.iceServers
+                        }
+                    });
                 } else {
                     reject(err);
                 }
@@ -63,42 +83,88 @@ class PeerManager {
             this.roomCode = roomCode.toUpperCase();
             this.isHost = false;
             this.playerId = 'player_' + Math.random().toString(36).substr(2, 9);
-            
-            this.peer = new Peer(this.playerId, {
-                debug: 1
-            });
-            
-            this.peer.on('open', () => {
-                console.log('Connecting to room:', this.roomCode);
-                
-                const conn = this.peer.connect(this.roomCode, {
-                    reliable: true
-                });
-                
-                conn.on('open', () => {
-                    console.log('Connected to host');
-                    this.hostConnection = conn;
-                    this.setupClientListeners(conn);
-                    resolve(true);
-                });
-                
-                conn.on('error', (err) => {
-                    console.error('Connection error:', err);
-                    reject(new Error('Could not connect to room'));
-                });
-                
-                // Timeout for connection
-                setTimeout(() => {
-                    if (!this.hostConnection) {
-                        reject(new Error('Connection timeout - room may not exist'));
+
+            let resolved = false;
+            let retryCount = 0;
+            const maxRetries = 3;
+
+            const attemptConnection = () => {
+                console.log(`Attempting to connect to room: ${this.roomCode} (attempt ${retryCount + 1})`);
+
+                this.peer = new Peer(this.playerId + '_' + retryCount, {
+                    debug: 2,
+                    config: {
+                        iceServers: this.iceServers
                     }
-                }, 10000);
-            });
-            
-            this.peer.on('error', (err) => {
-                console.error('Peer error:', err);
-                reject(err);
-            });
+                });
+
+                this.peer.on('open', () => {
+                    console.log('Peer open, connecting to room:', this.roomCode);
+
+                    const conn = this.peer.connect(this.roomCode, {
+                        reliable: true,
+                        serialization: 'json'
+                    });
+
+                    conn.on('open', () => {
+                        if (!resolved) {
+                            resolved = true;
+                            console.log('Connected to host successfully');
+                            this.hostConnection = conn;
+                            this.setupClientListeners(conn);
+                            resolve(true);
+                        }
+                    });
+
+                    conn.on('error', (err) => {
+                        console.error('Connection error:', err);
+                        if (!resolved) {
+                            retryCount++;
+                            if (retryCount < maxRetries) {
+                                this.peer.destroy();
+                                setTimeout(attemptConnection, 1000);
+                            } else {
+                                resolved = true;
+                                reject(new Error('Could not connect to room after ' + maxRetries + ' attempts'));
+                            }
+                        }
+                    });
+                });
+
+                this.peer.on('error', (err) => {
+                    console.error('Peer error:', err);
+                    if (!resolved) {
+                        if (err.type === 'peer-unavailable') {
+                            resolved = true;
+                            reject(new Error('Room does not exist or host is offline'));
+                        } else if (retryCount < maxRetries) {
+                            retryCount++;
+                            this.peer.destroy();
+                            setTimeout(attemptConnection, 1000);
+                        } else {
+                            resolved = true;
+                            reject(err);
+                        }
+                    }
+                });
+
+                // Timeout for this attempt
+                setTimeout(() => {
+                    if (!resolved && !this.hostConnection) {
+                        retryCount++;
+                        if (retryCount < maxRetries) {
+                            console.log('Connection attempt timed out, retrying...');
+                            this.peer.destroy();
+                            setTimeout(attemptConnection, 500);
+                        } else {
+                            resolved = true;
+                            reject(new Error('Connection timeout - room may not exist or host is behind a firewall'));
+                        }
+                    }
+                }, 8000);
+            };
+
+            attemptConnection();
         });
     }
 
@@ -106,17 +172,17 @@ class PeerManager {
     setupHostListeners() {
         this.peer.on('connection', (conn) => {
             console.log('New connection from:', conn.peer);
-            
+
             conn.on('open', () => {
                 this.connections.set(conn.peer, conn);
                 if (this.onPlayerJoin) {
                     this.onPlayerJoin(conn.peer);
                 }
-                
+
                 conn.on('data', (data) => {
                     this.handleMessage(conn.peer, data);
                 });
-                
+
                 conn.on('close', () => {
                     this.connections.delete(conn.peer);
                     if (this.onPlayerLeave) {
@@ -139,14 +205,14 @@ class PeerManager {
                 this.onMessage(data);
             }
         });
-        
+
         conn.on('close', () => {
             console.log('Disconnected from host');
             if (this.onConnectionError) {
                 this.onConnectionError(new Error('Host disconnected'));
             }
         });
-        
+
         if (this.onConnected) {
             this.onConnected();
         }
@@ -173,7 +239,7 @@ class PeerManager {
     // Broadcast to all connected peers (host only)
     broadcast(data, excludeId = null) {
         if (!this.isHost) return;
-        
+
         this.connections.forEach((conn, peerId) => {
             if (peerId !== excludeId && conn.open) {
                 conn.send(data);
@@ -184,7 +250,7 @@ class PeerManager {
     // Send to specific peer (host only)
     sendTo(peerId, data) {
         if (!this.isHost) return;
-        
+
         const conn = this.connections.get(peerId);
         if (conn && conn.open) {
             conn.send(data);
