@@ -20,6 +20,7 @@ class GameManager {
         this.currentDrawerIndex = 0;
         this.currentWord = '';
         this.revealedLetters = [];
+        this.maxHintReveals = 0;
         this.timeRemaining = 0;
         this.timerInterval = null;
         this.wordSelectTimer = null;
@@ -243,11 +244,17 @@ class GameManager {
         this.timeRemaining = this.settings.drawTime;
 
         // Calculate hint intervals
-        const hintCount = this.settings.hints;
-        const hintInterval = Math.floor(this.settings.drawTime / (hintCount + 1));
+        const letterCount = String(this.currentWord).replace(/\s/g, '').length;
+        // Never reveal the entire word via hints: keep at least 1 letter hidden.
+        this.maxHintReveals = Math.max(0, letterCount - 1);
+        const hintCount = Math.min(this.settings.hints, this.maxHintReveals);
+
         const hintTimes = [];
-        for (let i = 1; i <= hintCount; i++) {
-            hintTimes.push(this.settings.drawTime - (hintInterval * i));
+        if (hintCount > 0) {
+            const hintInterval = Math.floor(this.settings.drawTime / (hintCount + 1));
+            for (let i = 1; i <= hintCount; i++) {
+                hintTimes.push(this.settings.drawTime - (hintInterval * i));
+            }
         }
 
         if (this.onStateChange) {
@@ -276,7 +283,7 @@ class GameManager {
 
     // Reveal a hint letter
     revealHint() {
-        const word = this.currentWord.replace(/\s/g, '');
+        if (this.maxHintReveals > 0 && this.revealedLetters.length >= this.maxHintReveals) return;
         const unrevealedIndices = [];
 
         for (let i = 0; i < this.currentWord.length; i++) {
